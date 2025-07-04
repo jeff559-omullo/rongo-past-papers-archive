@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -21,10 +20,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile, isUploading, uploadProgress } = useFileUpload();
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  const validateAndSetFile = (file: File) => {
     setError('');
 
     // Validate file type
@@ -42,6 +38,13 @@ const FileUpload: React.FC<FileUploadProps> = ({
     }
 
     setSelectedFile(file);
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    validateAndSetFile(file);
   };
 
   const handleUpload = async () => {
@@ -79,10 +82,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       const file = files[0];
-      const mockEvent = {
-        target: { files: [file] }
-      } as React.ChangeEvent<HTMLInputElement>;
-      handleFileSelect(mockEvent);
+      validateAndSetFile(file);
     }
   };
 
