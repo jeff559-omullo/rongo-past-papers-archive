@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -62,11 +61,11 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({ papers }) => {
     document.addEventListener('contextmenu', preventRightClick);
     document.addEventListener('dragstart', preventDragStart);
 
-    // Add CSS to prevent text selection and drag
+    // Add CSS to prevent text selection and drag - using type assertion for vendor prefixes
     document.body.style.userSelect = 'none';
     document.body.style.webkitUserSelect = 'none';
-    document.body.style.mozUserSelect = 'none';
-    document.body.style.msUserSelect = 'none';
+    (document.body.style as any).mozUserSelect = 'none';
+    (document.body.style as any).msUserSelect = 'none';
 
     return () => {
       document.removeEventListener('keydown', preventScreenshot);
@@ -76,8 +75,8 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({ papers }) => {
       // Reset styles
       document.body.style.userSelect = '';
       document.body.style.webkitUserSelect = '';
-      document.body.style.mozUserSelect = '';
-      document.body.style.msUserSelect = '';
+      (document.body.style as any).mozUserSelect = '';
+      (document.body.style as any).msUserSelect = '';
     };
   }, []);
 
@@ -119,7 +118,7 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({ papers }) => {
   const uniqueSchools = Array.from(new Set(papers.map(p => p.course.school)));
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6" style={{ userSelect: 'none', webkitUserSelect: 'none' }}>
+    <div className="w-full max-w-6xl mx-auto space-y-6" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
       {/* Search and Filters */}
       <Card>
         <CardHeader>
