@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Upload, FileText } from 'lucide-react';
 import { Course, Paper } from '@/types/papers';
 import { rongoUniversityData } from '@/data/rongoUniversityCourses';
+import FileUpload from '@/components/FileUpload';
 
 interface PaperUploadProps {
   onUpload: (paper: Omit<Paper, 'id' | 'uploadDate' | 'downloadCount'>) => void;
@@ -23,7 +23,8 @@ const PaperUpload: React.FC<PaperUploadProps> = ({ onUpload }) => {
     examType: 'end-semester' as 'mid-semester' | 'end-semester' | 'cat' | 'assignment',
     academicYear: '',
     semester: 1 as 1 | 2,
-    fileName: ''
+    fileName: '',
+    fileUrl: ''
   });
 
   const allCourses = rongoUniversityData.flatMap(school => 
@@ -38,9 +39,17 @@ const PaperUpload: React.FC<PaperUploadProps> = ({ onUpload }) => {
     ? filteredDepartments.find(d => d.id === selectedDepartment)?.courses || []
     : [];
 
+  const handleFileUpload = (fileUrl: string, fileName: string) => {
+    setPaperData(prev => ({
+      ...prev,
+      fileName,
+      fileUrl
+    }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCourse) return;
+    if (!selectedCourse || !paperData.fileUrl) return;
 
     onUpload({
       title: paperData.title,
@@ -51,7 +60,7 @@ const PaperUpload: React.FC<PaperUploadProps> = ({ onUpload }) => {
       academicYear: paperData.academicYear,
       semester: paperData.semester,
       fileName: paperData.fileName,
-      fileUrl: '#' // This would be replaced with actual file upload logic
+      fileUrl: paperData.fileUrl
     });
 
     // Reset form
@@ -61,7 +70,8 @@ const PaperUpload: React.FC<PaperUploadProps> = ({ onUpload }) => {
       examType: 'end-semester',
       academicYear: '',
       semester: 1,
-      fileName: ''
+      fileName: '',
+      fileUrl: ''
     });
     setSelectedSchool('');
     setSelectedDepartment('');
@@ -221,17 +231,15 @@ const PaperUpload: React.FC<PaperUploadProps> = ({ onUpload }) => {
           </div>
 
           <div>
-            <Label htmlFor="file">File Name</Label>
-            <Input
-              id="file"
-              value={paperData.fileName}
-              onChange={(e) => setPaperData(prev => ({ ...prev, fileName: e.target.value }))}
-              placeholder="Enter file name (file upload functionality to be implemented)"
-              required
-            />
+            <Label>Upload File</Label>
+            <FileUpload onFileUpload={handleFileUpload} />
           </div>
 
-          <Button type="submit" className="w-full" disabled={!selectedCourse}>
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={!selectedCourse || !paperData.fileUrl}
+          >
             <FileText className="h-4 w-4 mr-2" />
             Upload Paper
           </Button>
