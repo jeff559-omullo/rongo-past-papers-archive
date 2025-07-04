@@ -1,12 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, Search, Calendar, BookOpen, GraduationCap } from 'lucide-react';
+import { Search, Calendar, BookOpen, GraduationCap, Eye } from 'lucide-react';
 import { Paper } from '@/types/papers';
 
 interface PapersDisplayProps {
@@ -18,6 +18,68 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({ papers }) => {
   const [selectedSchool, setSelectedSchool] = useState<string>('all');
   const [selectedExamType, setSelectedExamType] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState<string>('all');
+
+  // Prevent screenshots and right-click
+  useEffect(() => {
+    const preventScreenshot = (e: KeyboardEvent) => {
+      // Prevent Print Screen
+      if (e.key === 'PrintScreen') {
+        e.preventDefault();
+        alert('Screenshots are not allowed for security reasons.');
+        return false;
+      }
+      
+      // Prevent Ctrl+Shift+I (Developer Tools)
+      if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+        e.preventDefault();
+        return false;
+      }
+      
+      // Prevent F12 (Developer Tools)
+      if (e.key === 'F12') {
+        e.preventDefault();
+        return false;
+      }
+      
+      // Prevent Ctrl+U (View Source)
+      if (e.ctrlKey && e.key === 'u') {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    const preventRightClick = (e: MouseEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    const preventDragStart = (e: DragEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    document.addEventListener('keydown', preventScreenshot);
+    document.addEventListener('contextmenu', preventRightClick);
+    document.addEventListener('dragstart', preventDragStart);
+
+    // Add CSS to prevent text selection and drag
+    document.body.style.userSelect = 'none';
+    document.body.style.webkitUserSelect = 'none';
+    document.body.style.mozUserSelect = 'none';
+    document.body.style.msUserSelect = 'none';
+
+    return () => {
+      document.removeEventListener('keydown', preventScreenshot);
+      document.removeEventListener('contextmenu', preventRightClick);
+      document.removeEventListener('dragstart', preventDragStart);
+      
+      // Reset styles
+      document.body.style.userSelect = '';
+      document.body.style.webkitUserSelect = '';
+      document.body.style.mozUserSelect = '';
+      document.body.style.msUserSelect = '';
+    };
+  }, []);
 
   const filteredPapers = papers.filter(paper => {
     const matchesSearch = paper.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -48,17 +110,16 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({ papers }) => {
     }
   };
 
-  const handleDownload = (paper: Paper) => {
-    // This would implement actual file download logic
-    console.log('Downloading paper:', paper.title);
-    // For now, just show an alert
-    alert(`Downloading: ${paper.title}`);
+  const handleViewPaper = (paper: Paper) => {
+    // Show paper in a modal or new tab for viewing only
+    console.log('Viewing paper:', paper.title);
+    alert(`Viewing: ${paper.title}\n\nThis is a view-only mode. Downloads and screenshots are not permitted.`);
   };
 
   const uniqueSchools = Array.from(new Set(papers.map(p => p.course.school)));
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6">
+    <div className="w-full max-w-6xl mx-auto space-y-6" style={{ userSelect: 'none', webkitUserSelect: 'none' }}>
       {/* Search and Filters */}
       <Card>
         <CardHeader>
@@ -176,13 +237,17 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({ papers }) => {
                       </div>
 
                       <Button 
-                        onClick={() => handleDownload(paper)}
+                        onClick={() => handleViewPaper(paper)}
                         className="w-full"
                         variant="outline"
                       >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download ({paper.downloadCount} downloads)
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Paper ({paper.downloadCount} views)
                       </Button>
+
+                      <div className="text-xs text-red-600 bg-red-50 p-2 rounded text-center">
+                        View Only Mode - Downloads & Screenshots Disabled
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -203,6 +268,21 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({ papers }) => {
           </TabsContent>
         ))}
       </Tabs>
+
+      {/* Security Notice */}
+      <Card className="border-red-200 bg-red-50">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 text-red-800">
+            <Eye className="h-5 w-5" />
+            <div>
+              <p className="font-semibold">Security Notice</p>
+              <p className="text-sm">
+                This system is for viewing purposes only. Screenshots, downloads, and copying are disabled for security and copyright protection.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
