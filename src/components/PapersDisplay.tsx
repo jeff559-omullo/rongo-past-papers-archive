@@ -6,80 +6,68 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Calendar, BookOpen, GraduationCap, Lock, CreditCard } from 'lucide-react';
+import { Search, Calendar, BookOpen, GraduationCap, Lock, CreditCard, Download } from 'lucide-react';
 import { Paper } from '@/types/papers';
 
 interface PapersDisplayProps {
   papers: Paper[];
+  hasAccess?: boolean;
+  onRequestPayment?: () => void;
 }
 
-const PapersDisplay: React.FC<PapersDisplayProps> = ({ papers }) => {
+const PapersDisplay: React.FC<PapersDisplayProps> = ({ 
+  papers, 
+  hasAccess = false, 
+  onRequestPayment 
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSchool, setSelectedSchool] = useState<string>('all');
   const [selectedExamType, setSelectedExamType] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState<string>('all');
 
-  // Prevent screenshots and right-click
+  // Content protection for premium papers
   useEffect(() => {
-    const preventScreenshot = (e: KeyboardEvent) => {
-      // Prevent Print Screen
-      if (e.key === 'PrintScreen') {
+    if (!hasAccess) {
+      const preventScreenshot = (e: KeyboardEvent) => {
+        if (e.key === 'PrintScreen') {
+          e.preventDefault();
+          return false;
+        }
+        if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+          e.preventDefault();
+          return false;
+        }
+        if (e.key === 'F12') {
+          e.preventDefault();
+          return false;
+        }
+        if (e.ctrlKey && e.key === 'u') {
+          e.preventDefault();
+          return false;
+        }
+      };
+
+      const preventRightClick = (e: MouseEvent) => {
         e.preventDefault();
-        alert('Screenshots are not allowed for security reasons.');
         return false;
-      }
-      
-      // Prevent Ctrl+Shift+I (Developer Tools)
-      if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+      };
+
+      const preventDragStart = (e: DragEvent) => {
         e.preventDefault();
         return false;
-      }
-      
-      // Prevent F12 (Developer Tools)
-      if (e.key === 'F12') {
-        e.preventDefault();
-        return false;
-      }
-      
-      // Prevent Ctrl+U (View Source)
-      if (e.ctrlKey && e.key === 'u') {
-        e.preventDefault();
-        return false;
-      }
-    };
+      };
 
-    const preventRightClick = (e: MouseEvent) => {
-      e.preventDefault();
-      return false;
-    };
+      document.addEventListener('keydown', preventScreenshot);
+      document.addEventListener('contextmenu', preventRightClick);
+      document.addEventListener('dragstart', preventDragStart);
 
-    const preventDragStart = (e: DragEvent) => {
-      e.preventDefault();
-      return false;
-    };
-
-    document.addEventListener('keydown', preventScreenshot);
-    document.addEventListener('contextmenu', preventRightClick);
-    document.addEventListener('dragstart', preventDragStart);
-
-    // Add CSS to prevent text selection and drag - using type assertion for vendor prefixes
-    document.body.style.userSelect = 'none';
-    document.body.style.webkitUserSelect = 'none';
-    (document.body.style as any).mozUserSelect = 'none';
-    (document.body.style as any).msUserSelect = 'none';
-
-    return () => {
-      document.removeEventListener('keydown', preventScreenshot);
-      document.removeEventListener('contextmenu', preventRightClick);
-      document.removeEventListener('dragstart', preventDragStart);
-      
-      // Reset styles
-      document.body.style.userSelect = '';
-      document.body.style.webkitUserSelect = '';
-      (document.body.style as any).mozUserSelect = '';
-      (document.body.style as any).msUserSelect = '';
-    };
-  }, []);
+      return () => {
+        document.removeEventListener('keydown', preventScreenshot);
+        document.removeEventListener('contextmenu', preventRightClick);
+        document.removeEventListener('dragstart', preventDragStart);
+      };
+    }
+  }, [hasAccess]);
 
   const filteredPapers = papers.filter(paper => {
     const matchesSearch = paper.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -110,14 +98,10 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({ papers }) => {
     }
   };
 
-  const handlePayForAccess = () => {
-    alert('Payment system will be integrated with Supabase backend. You will be able to pay KSH 10 to access all papers.');
-  };
-
   const uniqueSchools = Array.from(new Set(papers.map(p => p.course.school)));
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
+    <div className="w-full max-w-6xl mx-auto space-y-6">
       {/* Search and Filters */}
       <Card>
         <CardHeader>
@@ -178,39 +162,53 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({ papers }) => {
         </CardContent>
       </Card>
 
-      {/* Premium Access Notice */}
-      <Card className="border-orange-200 bg-orange-50">
-        <CardContent className="p-6">
-          <div className="text-center space-y-4">
-            <div className="flex justify-center">
-              <Lock className="h-12 w-12 text-orange-600" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-orange-800 mb-2">Premium Access Required</h3>
-              <p className="text-orange-700 mb-4">
-                Our extensive collection of past papers is available for a one-time payment of <strong>KSH 10</strong>.
-                Get access to all papers across all years and courses.
-              </p>
-              <div className="space-y-2 text-sm text-orange-600">
-                <p>✓ {papers.length} Past Papers Available</p>
-                <p>✓ All Schools & Departments</p>
-                <p>✓ Secure & Protected Content</p>
-                <p>✓ Instant Access After Payment</p>
+      {/* Premium Access Notice - Only show if user doesn't have access */}
+      {!hasAccess && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="p-6">
+            <div className="text-center space-y-4">
+              <div className="flex justify-center">
+                <Lock className="h-12 w-12 text-orange-600" />
               </div>
+              <div>
+                <h3 className="text-xl font-bold text-orange-800 mb-2">Premium Access Required</h3>
+                <p className="text-orange-700 mb-4">
+                  Our extensive collection of past papers is available for a one-time payment of <strong>KSH 10</strong>.
+                  Get access to all papers across all years and courses.
+                </p>
+                <div className="space-y-2 text-sm text-orange-600">
+                  <p>✓ {papers.length} Past Papers Available</p>
+                  <p>✓ All Schools & Departments</p>
+                  <p>✓ Secure & Protected Content</p>
+                  <p>✓ Instant Access After Payment</p>
+                </div>
+              </div>
+              <Button 
+                onClick={onRequestPayment}
+                className="bg-orange-600 hover:bg-orange-700 text-white"
+                size="lg"
+              >
+                <CreditCard className="h-5 w-5 mr-2" />
+                Pay KSH 10 - Get Full Access
+              </Button>
             </div>
-            <Button 
-              onClick={handlePayForAccess}
-              className="bg-orange-600 hover:bg-orange-700 text-white"
-              size="lg"
-            >
-              <CreditCard className="h-5 w-5 mr-2" />
-              Pay KSH 10 - Get Full Access
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Papers by Year Tabs - Now showing locked state */}
+      {/* Success message for premium users */}
+      {hasAccess && (
+        <Card className="border-green-200 bg-green-50">
+          <CardContent className="p-4">
+            <div className="text-center text-green-800">
+              <p className="font-semibold">🎉 Premium Access Active!</p>
+              <p className="text-sm">You have full access to all past papers. Happy studying!</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Papers by Year Tabs */}
       <Tabs defaultValue="1" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="1" className="flex items-center gap-2">
@@ -235,10 +233,13 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({ papers }) => {
           <TabsContent key={year} value={year.toString()}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {papersByYear[year as keyof typeof papersByYear].map(paper => (
-                <Card key={paper.id} className="hover:shadow-lg transition-shadow opacity-75">
+                <Card 
+                  key={paper.id} 
+                  className={`hover:shadow-lg transition-shadow ${!hasAccess ? 'opacity-75' : ''}`}
+                >
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <Lock className="h-4 w-4 text-gray-500" />
+                      {!hasAccess && <Lock className="h-4 w-4 text-gray-500" />}
                       {paper.title}
                     </CardTitle>
                     <CardDescription className="flex items-center gap-2">
@@ -269,19 +270,27 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({ papers }) => {
                         <div className="text-xs">{paper.course.school}</div>
                       </div>
 
-                      <Button 
-                        onClick={handlePayForAccess}
-                        className="w-full"
-                        variant="outline"
-                        disabled
-                      >
-                        <Lock className="h-4 w-4 mr-2" />
-                        Locked - Pay to Access
-                      </Button>
-
-                      <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded text-center">
-                        Premium Content - KSH 10 for Full Access
-                      </div>
+                      {hasAccess ? (
+                        <Button className="w-full">
+                          <Download className="h-4 w-4 mr-2" />
+                          Download Paper
+                        </Button>
+                      ) : (
+                        <>
+                          <Button 
+                            onClick={onRequestPayment}
+                            className="w-full"
+                            variant="outline"
+                            disabled
+                          >
+                            <Lock className="h-4 w-4 mr-2" />
+                            Locked - Pay to Access
+                          </Button>
+                          <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded text-center">
+                            Premium Content - KSH 10 for Full Access
+                          </div>
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -303,20 +312,22 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({ papers }) => {
         ))}
       </Tabs>
 
-      {/* Security Notice */}
-      <Card className="border-red-200 bg-red-50">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-red-800">
-            <Lock className="h-5 w-5" />
-            <div>
-              <p className="font-semibold">Secure & Protected Content</p>
-              <p className="text-sm">
-                All papers are securely stored and protected. Access requires payment verification for copyright protection.
-              </p>
+      {/* Security Notice - Only show if user doesn't have access */}
+      {!hasAccess && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-red-800">
+              <Lock className="h-5 w-5" />
+              <div>
+                <p className="font-semibold">Secure & Protected Content</p>
+                <p className="text-sm">
+                  All papers are securely stored and protected. Access requires payment verification for copyright protection.
+                </p>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

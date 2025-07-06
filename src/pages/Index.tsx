@@ -1,17 +1,30 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, BookOpen, GraduationCap, School } from 'lucide-react';
+import { Upload, BookOpen, GraduationCap, School, User, LogOut } from 'lucide-react';
 import PaperUpload from '@/components/PaperUpload';
 import PapersDisplay from '@/components/PapersDisplay';
+import PaymentModal from '@/components/PaymentModal';
 import { Paper } from '@/types/papers';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, loading, hasAccess, signOut } = useAuth();
   const [papers, setPapers] = useState<Paper[]>([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
 
   const handlePaperUpload = (paperData: Omit<Paper, 'id' | 'uploadDate' | 'downloadCount'>) => {
     const newPaper: Paper = {
@@ -28,6 +41,35 @@ const Index = () => {
       description: `${paperData.title} has been added to the collection.`,
     });
   };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
+
+  const handlePaymentSuccess = () => {
+    toast({
+      title: "Welcome to Premium!",
+      description: "You now have full access to all past papers.",
+    });
+  };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <School className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if user is not authenticated
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -46,9 +88,23 @@ const Index = () => {
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{papers.length} Papers Available</p>
-                <p className="text-xs text-gray-500">Organized by academic year</p>
+                <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  {user.email}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {hasAccess ? 'Premium Access' : 'Free Access'} • {papers.length} Papers
+                </p>
               </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleSignOut}
+                className="flex items-center gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </Button>
             </div>
           </div>
         </div>
@@ -63,8 +119,10 @@ const Index = () => {
                 <div>
                   <h2 className="text-3xl font-bold mb-2">Welcome to Rongo University Past Papers</h2>
                   <p className="text-blue-100 text-lg">
-                    Access and contribute to our comprehensive collection of past examination papers, 
-                    organized by academic year and course.
+                    {hasAccess 
+                      ? "You have premium access! Download and view all papers across all years and courses."
+                      : "Access our comprehensive collection of past examination papers. Premium access available for KSH 10."
+                    }
                   </p>
                 </div>
                 <GraduationCap className="h-16 w-16 text-blue-200" />
@@ -95,12 +153,19 @@ const Index = () => {
                   </CardTitle>
                   <CardDescription>
                     Browse and download past papers organized by year of study. 
-                    Papers are categorized from 1st year to 4th year across all schools and departments.
+                    {hasAccess 
+                      ? "You have premium access to all papers!" 
+                      : "Premium access required for full paper downloads."
+                    }
                   </CardDescription>
                 </CardHeader>
               </Card>
               
-              <PapersDisplay papers={papers} />
+              <PapersDisplay 
+                papers={papers} 
+                hasAccess={hasAccess}
+                onRequestPayment={() => setShowPaymentModal(true)}
+              />
             </div>
           </TabsContent>
 
@@ -168,6 +233,12 @@ const Index = () => {
           </Card>
         </div>
       </main>
+
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
     </div>
   );
 };
