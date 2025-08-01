@@ -15,7 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, loading, hasAccess, signOut } = useAuth();
+  const { user, loading, hasAccess, isAdmin, signOut } = useAuth();
   const [papers, setPapers] = useState<Paper[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
@@ -87,6 +87,17 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              {isAdmin && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => navigate('/admin')}
+                  className="flex items-center gap-2"
+                >
+                  <User className="h-4 w-4" />
+                  Admin Panel
+                </Button>
+              )}
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
                   <User className="h-4 w-4" />

@@ -8,7 +8,9 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   hasAccess: boolean;
+  isAdmin: boolean;
   checkAccess: () => Promise<void>;
+  checkAdminStatus: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -19,6 +21,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const checkAccess = async () => {
     if (!user) {
@@ -43,6 +46,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const checkAdminStatus = async () => {
+    if (!user) {
+      setIsAdmin(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('is_admin', {
+        _user_id: user.id
+      });
+
+      if (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
+      } else {
+        setIsAdmin(data || false);
+      }
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      setIsAdmin(false);
+    }
+  };
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -62,9 +88,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (session?.user) {
           setTimeout(() => {
             checkAccess();
+            checkAdminStatus();
           }, 0);
         } else {
           setHasAccess(false);
+          setIsAdmin(false);
         }
       }
     );
@@ -78,6 +106,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (session?.user) {
         setTimeout(() => {
           checkAccess();
+          checkAdminStatus();
         }, 0);
       }
     });
@@ -88,6 +117,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (user) {
       checkAccess();
+      checkAdminStatus();
     }
   }, [user]);
 
@@ -96,7 +126,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     session,
     loading,
     hasAccess,
+    isAdmin,
     checkAccess,
+    checkAdminStatus,
     signOut
   };
 

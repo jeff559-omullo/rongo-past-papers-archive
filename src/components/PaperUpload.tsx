@@ -8,12 +8,17 @@ import { Upload, FileText } from 'lucide-react';
 import { Course, Paper } from '@/types/papers';
 import { rongoUniversityData } from '@/data/rongoUniversityCourses';
 import FileUpload from '@/components/FileUpload';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 interface PaperUploadProps {
   onUpload: (paper: Omit<Paper, 'id' | 'uploadDate' | 'downloadCount'>) => void;
 }
 
 const PaperUpload: React.FC<PaperUploadProps> = ({ onUpload }) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [selectedSchool, setSelectedSchool] = useState<string>('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -47,35 +52,71 @@ const PaperUpload: React.FC<PaperUploadProps> = ({ onUpload }) => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCourse || !paperData.fileUrl) return;
+    if (!selectedCourse || !paperData.fileUrl || !user) return;
 
-    onUpload({
-      title: paperData.title,
-      courseId: selectedCourse.id,
-      course: selectedCourse,
-      year: paperData.year,
-      examType: paperData.examType,
-      academicYear: paperData.academicYear,
-      semester: paperData.semester,
-      fileName: paperData.fileName,
-      fileUrl: paperData.fileUrl
-    });
+    try {
+      // Save to database
+      const { error } = await supabase
+        .from('papers')
+        .insert({
+          title: paperData.title,
+          course_id: selectedCourse.id,
+          course_name: selectedCourse.name,
+          course_code: selectedCourse.code,
+          year: paperData.year,
+          exam_type: paperData.examType,
+          academic_year: paperData.academicYear,
+          semester: paperData.semester,
+          file_name: paperData.fileName,
+          file_url: paperData.fileUrl,
+          uploaded_by: user.id,
+          status: 'pending'
+        });
 
-    // Reset form
-    setPaperData({
-      title: '',
-      year: 1,
-      examType: 'end-semester',
-      academicYear: '',
-      semester: 1,
-      fileName: '',
-      fileUrl: ''
-    });
-    setSelectedSchool('');
-    setSelectedDepartment('');
-    setSelectedCourse(null);
+      if (error) throw error;
+
+      toast({
+        title: "Paper uploaded successfully!",
+        description: "Your paper has been submitted for review.",
+      });
+
+      // Call the original onUpload callback for local state update
+      onUpload({
+        title: paperData.title,
+        courseId: selectedCourse.id,
+        course: selectedCourse,
+        year: paperData.year,
+        examType: paperData.examType,
+        academicYear: paperData.academicYear,
+        semester: paperData.semester,
+        fileName: paperData.fileName,
+        fileUrl: paperData.fileUrl
+      });
+
+      // Reset form
+      setPaperData({
+        title: '',
+        year: 1,
+        examType: 'end-semester',
+        academicYear: '',
+        semester: 1,
+        fileName: '',
+        fileUrl: ''
+      });
+      setSelectedSchool('');
+      setSelectedDepartment('');
+      setSelectedCourse(null);
+
+    } catch (error) {
+      console.error('Error uploading paper:', error);
+      toast({
+        title: "Upload failed",
+        description: "There was an error uploading your paper. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
