@@ -173,7 +173,6 @@ const Index = () => {
               </Card>
               
               <PapersDisplay 
-                papers={papers} 
                 hasAccess={hasAccess}
                 onRequestPayment={() => setShowPaymentModal(true)}
               />

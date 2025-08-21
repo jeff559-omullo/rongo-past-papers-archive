@@ -8,22 +8,52 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Calendar, BookOpen, GraduationCap, Lock, CreditCard, Download } from 'lucide-react';
 import { Paper } from '@/types/papers';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface PapersDisplayProps {
-  papers: Paper[];
   hasAccess?: boolean;
   onRequestPayment?: () => void;
 }
 
 const PapersDisplay: React.FC<PapersDisplayProps> = ({ 
-  papers, 
   hasAccess = false, 
   onRequestPayment 
 }) => {
+  const { toast } = useToast();
+  const [papers, setPapers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSchool, setSelectedSchool] = useState<string>('all');
   const [selectedExamType, setSelectedExamType] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState<string>('all');
+
+  // Fetch approved papers from database
+  useEffect(() => {
+    const fetchPapers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('papers')
+          .select('*')
+          .eq('status', 'approved')
+          .order('upload_date', { ascending: false });
+
+        if (error) throw error;
+        setPapers(data || []);
+      } catch (error) {
+        console.error('Error fetching papers:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch papers.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPapers();
+  }, [toast]);
 
   // Content protection for premium papers
   useEffect(() => {
@@ -71,14 +101,13 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({
 
   const filteredPapers = papers.filter(paper => {
     const matchesSearch = paper.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         paper.course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         paper.course.code.toLowerCase().includes(searchTerm.toLowerCase());
+                         paper.course_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         paper.course_code.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesSchool = selectedSchool === 'all' || paper.course.school === selectedSchool;
-    const matchesExamType = selectedExamType === 'all' || paper.examType === selectedExamType;
+    const matchesExamType = selectedExamType === 'all' || paper.exam_type === selectedExamType;
     const matchesYear = selectedYear === 'all' || paper.year.toString() === selectedYear;
 
-    return matchesSearch && matchesSchool && matchesExamType && matchesYear;
+    return matchesSearch && matchesExamType && matchesYear;
   });
 
   const papersByYear = {
@@ -98,7 +127,46 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({
     }
   };
 
-  const uniqueSchools = Array.from(new Set(papers.map(p => p.course.school)));
+  const handleDownload = async (paper: any) => {
+    if (!hasAccess) {
+      onRequestPayment?.();
+      return;
+    }
+
+    try {
+      // Increment download count
+      await supabase
+        .from('papers')
+        .update({ 
+          download_count: (paper.download_count || 0) + 1 
+        })
+        .eq('id', paper.id);
+
+      // Open file in new tab
+      window.open(paper.file_url, '_blank');
+      
+      toast({
+        title: "Download Started",
+        description: "Paper is opening in a new tab.",
+      });
+    } catch (error) {
+      console.error('Error downloading paper:', error);
+      toast({
+        title: "Download Failed",
+        description: "There was an error downloading the paper.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+        <p className="text-gray-600">Loading papers...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6">
@@ -120,19 +188,6 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({
                 className="w-full"
               />
             </div>
-            
-            <Select value={selectedSchool} onValueChange={setSelectedSchool}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Schools" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Schools</SelectItem>
-                {uniqueSchools.map(school => (
-                  <SelectItem key={school} value={school}>{school}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             <Select value={selectedExamType} onValueChange={setSelectedExamType}>
               <SelectTrigger>
                 <SelectValue placeholder="All Exam Types" />
@@ -244,54 +299,57 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({
                     </CardTitle>
                     <CardDescription className="flex items-center gap-2">
                       <BookOpen className="h-4 w-4" />
-                      {paper.course.code} - {paper.course.name}
+                      {paper.course_code} - {paper.course_name}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap gap-2">
-                        <Badge className={getExamTypeBadgeColor(paper.examType)}>
-                          {paper.examType.replace('-', ' ').toUpperCase()}
-                        </Badge>
-                        <Badge variant="outline">
-                          Year {paper.year}
-                        </Badge>
-                        <Badge variant="outline">
-                          Semester {paper.semester}
-                        </Badge>
-                      </div>
-                      
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          {paper.academicYear}
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap gap-2">
+                          <Badge className={getExamTypeBadgeColor(paper.exam_type)}>
+                            {paper.exam_type.replace('-', ' ').toUpperCase()}
+                          </Badge>
+                          <Badge variant="outline">
+                            Year {paper.year}
+                          </Badge>
+                          <Badge variant="outline">
+                            Semester {paper.semester}
+                          </Badge>
                         </div>
-                        <div>{paper.course.department}</div>
-                        <div className="text-xs">{paper.course.school}</div>
-                      </div>
-
-                      {hasAccess ? (
-                        <Button className="w-full">
-                          <Download className="h-4 w-4 mr-2" />
-                          Download Paper
-                        </Button>
-                      ) : (
-                        <>
-                          <Button 
-                            onClick={onRequestPayment}
-                            className="w-full"
-                            variant="outline"
-                            disabled
-                          >
-                            <Lock className="h-4 w-4 mr-2" />
-                            Locked - Pay to Access
-                          </Button>
-                          <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded text-center">
-                            Premium Content - KSH 10 for Full Access
+                        
+                        <div className="text-sm text-gray-600 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            {paper.academic_year}
                           </div>
-                        </>
-                      )}
-                    </div>
+                          <div>Downloads: {paper.download_count || 0}</div>
+                          <div className="text-xs">{new Date(paper.upload_date).toLocaleDateString()}</div>
+                        </div>
+
+                        {hasAccess ? (
+                          <Button 
+                            className="w-full"
+                            onClick={() => handleDownload(paper)}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download Paper
+                          </Button>
+                        ) : (
+                          <>
+                            <Button 
+                              onClick={onRequestPayment}
+                              className="w-full"
+                              variant="outline"
+                              disabled
+                            >
+                              <Lock className="h-4 w-4 mr-2" />
+                              Locked - Pay to Access
+                            </Button>
+                            <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded text-center">
+                              Premium Content - KSH 10 for Full Access
+                            </div>
+                          </>
+                        )}
+                      </div>
                   </CardContent>
                 </Card>
               ))}

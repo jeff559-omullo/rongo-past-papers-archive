@@ -20,11 +20,13 @@ import {
   Calendar,
   Download,
   School,
-  LogOut
+  LogOut,
+  Upload
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import AdminPaperUpload from '@/components/AdminPaperUpload';
 
 interface PaperData {
   id: string;
@@ -314,10 +316,14 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="papers" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsList className="grid w-full grid-cols-3 mb-8">
             <TabsTrigger value="papers" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Paper Management
+            </TabsTrigger>
+            <TabsTrigger value="upload" className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              Admin Upload
             </TabsTrigger>
             <TabsTrigger value="payments" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
@@ -455,6 +461,23 @@ const Admin = () => {
                     </TableBody>
                   </Table>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="upload">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="h-5 w-5" />
+                  Admin Paper Upload
+                </CardTitle>
+                <CardDescription>
+                  Upload papers directly as admin - these will be auto-approved and immediately available to users.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AdminPaperUpload onUpload={fetchPapers} />
               </CardContent>
             </Card>
           </TabsContent>
