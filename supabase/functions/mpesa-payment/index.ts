@@ -41,37 +41,40 @@ serve(async (req) => {
     const consumerSecret = Deno.env.get('MPESA_CONSUMER_SECRET')
 
     if (!consumerKey || !consumerSecret) {
+      console.error('M-Pesa credentials not found in environment')
       throw new Error('M-Pesa credentials not configured')
     }
+
+    console.log('M-Pesa credentials loaded successfully')
 
     // Step 1: Get access token
     const authString = btoa(`${consumerKey}:${consumerSecret}`)
     
     console.log('Attempting to get M-Pesa access token...')
     
-    // Use a more robust fetch with error handling
-    let tokenResponse;
-    try {
-      tokenResponse = await fetch('https://sandbox-api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Basic ${authString}`,
-          'Content-Type': 'application/json',
-        },
-      })
-    } catch (fetchError) {
-      console.error('Network error when fetching access token:', fetchError)
-      throw new Error(`Network error: Unable to connect to Safaricom API. This might be due to network restrictions in the edge function environment.`)
-    }
+    const tokenResponse = await fetch('https://sandbox-api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${authString}`,
+        'Content-Type': 'application/json',
+      },
+    })
 
     if (!tokenResponse.ok) {
-      throw new Error(`Failed to get access token: ${tokenResponse.statusText}`)
+      const errorText = await tokenResponse.text()
+      console.error('Token request failed:', errorText)
+      throw new Error(`Failed to get access token: ${tokenResponse.status} ${tokenResponse.statusText}`)
     }
 
     const tokenData = await tokenResponse.json()
     const accessToken = tokenData.access_token
 
-    console.log('Got M-Pesa access token')
+    if (!accessToken) {
+      console.error('No access token in response:', tokenData)
+      throw new Error('No access token received from Safaricom')
+    }
+
+    console.log('M-Pesa access token obtained successfully')
 
     // Step 2: Initiate STK Push
     const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14)
@@ -80,56 +83,61 @@ serve(async (req) => {
     
     const password = btoa(`${businessShortCode}${passkey}${timestamp}`)
 
+    // Ensure phone number is in correct format
+    const formattedPhone = phoneNumber.startsWith('254') ? phoneNumber : `254${phoneNumber.substring(1)}`
+
     const stkPushPayload = {
       BusinessShortCode: businessShortCode,
       Password: password,
       Timestamp: timestamp,
       TransactionType: 'CustomerPayBillOnline',
       Amount: amount,
-      PartyA: phoneNumber,
+      PartyA: formattedPhone,
       PartyB: businessShortCode,
-      PhoneNumber: phoneNumber,
+      PhoneNumber: formattedPhone,
       CallBackURL: `https://zjecjayanqsjomtnsxmh.supabase.co/functions/v1/mpesa-callback`,
       AccountReference: `PAPER${paymentId.slice(-8)}`,
       TransactionDesc: 'Rongo University Past Papers Access'
     }
 
-    console.log('Initiating STK Push:', stkPushPayload)
+    console.log('Initiating STK Push with payload:', JSON.stringify(stkPushPayload, null, 2))
 
-    let stkResponse;
-    try {
-      stkResponse = await fetch('https://sandbox-api.safaricom.co.ke/mpesa/stkpush/v1/processrequest', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(stkPushPayload),
-      })
-    } catch (fetchError) {
-      console.error('Network error when initiating STK Push:', fetchError)
-      throw new Error(`Network error: Unable to initiate STK Push. This might be due to network restrictions in the edge function environment.`)
-    }
+    const stkResponse = await fetch('https://sandbox-api.safaricom.co.ke/mpesa/stkpush/v1/processrequest', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(stkPushPayload),
+    })
 
     if (!stkResponse.ok) {
-      throw new Error(`STK Push failed: ${stkResponse.statusText}`)
+      const errorText = await stkResponse.text()
+      console.error('STK Push request failed:', errorText)
+      throw new Error(`STK Push failed: ${stkResponse.status} ${stkResponse.statusText}`)
     }
 
     const stkData = await stkResponse.json()
-    console.log('STK Push response:', stkData)
+    console.log('STK Push response received:', JSON.stringify(stkData, null, 2))
 
     if (stkData.ResponseCode !== '0') {
-      throw new Error(`STK Push error: ${stkData.ResponseDescription}`)
+      console.error('STK Push error response:', stkData)
+      throw new Error(`STK Push error: ${stkData.ResponseDescription || 'Unknown error'}`)
     }
 
-    // Store M-Pesa transaction details
-    const { error: mpesaError } = await supabaseClient
+    // Store M-Pesa transaction details using service role key for admin access
+    const supabaseService = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    const { error: mpesaError } = await supabaseService
       .from('mpesa_transactions')
       .insert({
         payment_id: paymentId,
         merchant_request_id: stkData.MerchantRequestID,
         checkout_request_id: stkData.CheckoutRequestID,
-        phone_number: phoneNumber,
+        phone_number: formattedPhone,
         amount: amount
       })
 
@@ -138,10 +146,12 @@ serve(async (req) => {
       throw new Error('Failed to store transaction details')
     }
 
+    console.log('M-Pesa transaction stored successfully')
+
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Payment request sent to your phone',
+        message: 'Payment request sent to your phone. Please check your phone and enter your M-Pesa PIN.',
         merchantRequestId: stkData.MerchantRequestID,
         checkoutRequestId: stkData.CheckoutRequestID
       }),
