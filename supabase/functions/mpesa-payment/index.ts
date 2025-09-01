@@ -46,12 +46,23 @@ serve(async (req) => {
 
     // Step 1: Get access token
     const authString = btoa(`${consumerKey}:${consumerSecret}`)
-    const tokenResponse = await fetch('https://sandbox-api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Basic ${authString}`,
-      },
-    })
+    
+    console.log('Attempting to get M-Pesa access token...')
+    
+    // Use a more robust fetch with error handling
+    let tokenResponse;
+    try {
+      tokenResponse = await fetch('https://sandbox-api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${authString}`,
+          'Content-Type': 'application/json',
+        },
+      })
+    } catch (fetchError) {
+      console.error('Network error when fetching access token:', fetchError)
+      throw new Error(`Network error: Unable to connect to Safaricom API. This might be due to network restrictions in the edge function environment.`)
+    }
 
     if (!tokenResponse.ok) {
       throw new Error(`Failed to get access token: ${tokenResponse.statusText}`)
@@ -85,14 +96,20 @@ serve(async (req) => {
 
     console.log('Initiating STK Push:', stkPushPayload)
 
-    const stkResponse = await fetch('https://sandbox-api.safaricom.co.ke/mpesa/stkpush/v1/processrequest', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(stkPushPayload),
-    })
+    let stkResponse;
+    try {
+      stkResponse = await fetch('https://sandbox-api.safaricom.co.ke/mpesa/stkpush/v1/processrequest', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(stkPushPayload),
+      })
+    } catch (fetchError) {
+      console.error('Network error when initiating STK Push:', fetchError)
+      throw new Error(`Network error: Unable to initiate STK Push. This might be due to network restrictions in the edge function environment.`)
+    }
 
     if (!stkResponse.ok) {
       throw new Error(`STK Push failed: ${stkResponse.statusText}`)
