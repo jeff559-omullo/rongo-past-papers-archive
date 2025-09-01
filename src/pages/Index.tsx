@@ -179,21 +179,50 @@ const Index = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="upload">
+              <TabsContent value="upload">
             <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Upload className="h-5 w-5" />
-                    Contribute to the Collection
-                  </CardTitle>
-                  <CardDescription>
-                    Help fellow students by uploading past papers. Please ensure you have permission to share the papers.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-              
-              <PaperUpload onUpload={handlePaperUpload} />
+              {isAdmin ? (
+                <>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Upload className="h-5 w-5" />
+                        Admin Paper Upload
+                      </CardTitle>
+                      <CardDescription>
+                        As an admin, you can upload papers directly. Use the Admin Panel for better paper management tools.
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                  
+                  <PaperUpload onUpload={handlePaperUpload} />
+                </>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Upload className="h-5 w-5" />
+                      Paper Upload Restricted
+                    </CardTitle>
+                    <CardDescription>
+                      Paper uploads are now restricted to administrators only to maintain quality and security. Contact an admin if you have papers to contribute.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8">
+                      <School className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500 mb-4">Only administrators can upload papers</p>
+                      <Button 
+                        onClick={() => setShowPaymentModal(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <GraduationCap className="h-4 w-4" />
+                        Get Premium Access Instead
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </TabsContent>
         </Tabs>
