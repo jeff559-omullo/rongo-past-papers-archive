@@ -1,163 +1,132 @@
-import React, { useRef, useState } from 'react';
+
+import React, { useCallback, useState } from 'react';
+import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Upload, FileText, X } from 'lucide-react';
-import { useFileUpload } from '@/hooks/useFileUpload';
+import { Upload, File, X, CheckCircle } from 'lucide-react';
+import { useSupabaseFileUpload } from '@/hooks/useSupabaseFileUpload';
+import { useToast } from '@/hooks/use-toast';
 
 interface FileUploadProps {
   onFileUpload: (fileUrl: string, fileName: string) => void;
-  acceptedFileTypes?: string;
-  maxFileSize?: number; // in MB
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ 
-  onFileUpload, 
-  acceptedFileTypes = '.pdf,.doc,.docx',
-  maxFileSize = 10 
-}) => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [error, setError] = useState<string>('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { uploadFile, isUploading, uploadProgress } = useFileUpload();
+const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
+  const { uploadFile, isUploading, uploadProgress } = useSupabaseFileUpload();
+  const { toast } = useToast();
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; url: string } | null>(null);
 
-  const validateAndSetFile = (file: File) => {
-    setError('');
-
-    // Validate file type
-    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-    if (!acceptedFileTypes.includes(fileExtension)) {
-      setError(`File type not supported. Please upload ${acceptedFileTypes} files only.`);
-      return;
-    }
-
-    // Validate file size
-    const fileSizeInMB = file.size / (1024 * 1024);
-    if (fileSizeInMB > maxFileSize) {
-      setError(`File size too large. Maximum size is ${maxFileSize}MB.`);
-      return;
-    }
-
-    setSelectedFile(file);
-  };
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
     if (!file) return;
 
-    validateAndSetFile(file);
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile) return;
-
     try {
-      const result = await uploadFile(selectedFile);
+      console.log('Processing file upload:', file.name);
+      const result = await uploadFile(file);
+      
+      console.log('File upload successful:', result);
+      setUploadedFile({ name: result.fileName, url: result.fileUrl });
       onFileUpload(result.fileUrl, result.fileName);
-      setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      
+      toast({
+        title: "File uploaded successfully!",
+        description: `${result.fileName} has been uploaded and is ready for submission.`,
+      });
     } catch (error) {
-      setError('Failed to upload file. Please try again.');
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to upload file. Please try again.",
+        variant: "destructive",
+      });
     }
+  }, [uploadFile, onFileUpload, toast]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'image/*': ['.png', '.jpg', '.jpeg']
+    },
+    maxSize: 10 * 1024 * 1024, // 10MB
+    multiple: false,
+    disabled: isUploading
+  });
+
+  const removeFile = () => {
+    setUploadedFile(null);
+    onFileUpload('', '');
   };
 
-  const handleRemoveFile = () => {
-    setSelectedFile(null);
-    setError('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      const file = files[0];
-      validateAndSetFile(file);
-    }
-  };
+  if (uploadedFile) {
+    return (
+      <div className="border-2 border-green-200 border-dashed rounded-lg p-6 bg-green-50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <CheckCircle className="h-8 w-8 text-green-600" />
+            <div>
+              <p className="font-medium text-green-800">{uploadedFile.name}</p>
+              <p className="text-sm text-green-600">File uploaded successfully</p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={removeFile}
+            className="text-green-600 hover:text-green-800"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {!selectedFile ? (
-        <div
-          className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer"
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <div className="space-y-2">
-            <p className="text-lg font-medium text-gray-700">Upload your paper</p>
-            <p className="text-sm text-gray-500">
-              Drag and drop your file here, or click to browse
-            </p>
-            <p className="text-xs text-gray-400">
-              Supported formats: PDF, DOC, DOCX (Max {maxFileSize}MB)
-            </p>
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={acceptedFileTypes}
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-        </div>
-      ) : (
-        <div className="border border-gray-200 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-3">
-              <FileText className="h-8 w-8 text-blue-600" />
-              <div>
-                <p className="font-medium text-gray-900">{selectedFile.name}</p>
-                <p className="text-sm text-gray-500">
-                  {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
-                </p>
-              </div>
+      <div
+        {...getRootProps()}
+        className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+          isDragActive
+            ? 'border-blue-400 bg-blue-50'
+            : isUploading
+            ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+            : 'border-gray-300 hover:border-gray-400'
+        }`}
+      >
+        <input {...getInputProps()} />
+        
+        {isUploading ? (
+          <div className="space-y-4">
+            <Upload className="h-12 w-12 text-blue-500 mx-auto animate-bounce" />
+            <div>
+              <p className="text-lg font-medium text-gray-700">Uploading...</p>
+              <p className="text-sm text-gray-500">Please wait while we upload your file</p>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRemoveFile}
-              disabled={isUploading}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          {isUploading && (
-            <div className="space-y-2">
+            <div className="max-w-xs mx-auto">
               <Progress value={uploadProgress} className="h-2" />
-              <p className="text-sm text-gray-600 text-center">
-                Uploading... {uploadProgress}%
+              <p className="text-xs text-gray-500 mt-1">{uploadProgress}% complete</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <File className="h-12 w-12 text-gray-400 mx-auto" />
+            <div>
+              <p className="text-lg font-medium text-gray-700">
+                {isDragActive ? 'Drop the file here' : 'Choose a file or drag & drop'}
+              </p>
+              <p className="text-sm text-gray-500">
+                PDF, DOC, DOCX or image files up to 10MB
               </p>
             </div>
-          )}
-          
-          {!isUploading && (
-            <Button onClick={handleUpload} className="w-full">
-              <Upload className="h-4 w-4 mr-2" />
-              Upload File
+            <Button type="button" variant="outline" disabled={isUploading}>
+              Select File
             </Button>
-          )}
-        </div>
-      )}
-      
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-          <p className="text-sm text-red-600">{error}</p>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

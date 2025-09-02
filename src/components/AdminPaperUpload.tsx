@@ -42,6 +42,7 @@ const AdminPaperUpload: React.FC<AdminPaperUploadProps> = ({ onUpload }) => {
     : [];
 
   const handleFileUpload = (fileUrl: string, fileName: string) => {
+    console.log('Admin file uploaded:', { fileUrl, fileName });
     setPaperData(prev => ({
       ...prev,
       fileName,
@@ -51,10 +52,19 @@ const AdminPaperUpload: React.FC<AdminPaperUploadProps> = ({ onUpload }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCourse || !paperData.fileUrl || !user) return;
+    if (!selectedCourse || !paperData.fileUrl || !user) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields and upload a file.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setUploading(true);
     try {
+      console.log('Admin submitting paper with data:', paperData);
+
       // Admin uploads are auto-approved and immediately available
       const { error } = await supabase
         .from('papers')
@@ -68,7 +78,7 @@ const AdminPaperUpload: React.FC<AdminPaperUploadProps> = ({ onUpload }) => {
           academic_year: paperData.academicYear,
           semester: paperData.semester,
           file_name: paperData.fileName,
-          file_url: paperData.fileUrl,
+          file_url: paperData.fileUrl, // This is now a proper Supabase Storage URL
           uploaded_by: user.id,
           status: 'approved', // Auto-approved for admin uploads
           reviewed_by: user.id,
@@ -76,7 +86,12 @@ const AdminPaperUpload: React.FC<AdminPaperUploadProps> = ({ onUpload }) => {
           review_notes: 'Auto-approved: Admin upload'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Admin upload database error:', error);
+        throw error;
+      }
+
+      console.log('Admin paper saved successfully to database');
 
       toast({
         title: "Paper uploaded successfully!",

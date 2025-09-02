@@ -45,6 +45,7 @@ const PaperUpload: React.FC<PaperUploadProps> = ({ onUpload }) => {
     : [];
 
   const handleFileUpload = (fileUrl: string, fileName: string) => {
+    console.log('File uploaded:', { fileUrl, fileName });
     setPaperData(prev => ({
       ...prev,
       fileName,
@@ -54,10 +55,19 @@ const PaperUpload: React.FC<PaperUploadProps> = ({ onUpload }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCourse || !paperData.fileUrl || !user) return;
+    if (!selectedCourse || !paperData.fileUrl || !user) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields and upload a file.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      // Save to database
+      console.log('Submitting paper with data:', paperData);
+
+      // Save to database with the actual Supabase Storage URL
       const { error } = await supabase
         .from('papers')
         .insert({
@@ -70,12 +80,17 @@ const PaperUpload: React.FC<PaperUploadProps> = ({ onUpload }) => {
           academic_year: paperData.academicYear,
           semester: paperData.semester,
           file_name: paperData.fileName,
-          file_url: paperData.fileUrl,
+          file_url: paperData.fileUrl, // This is now a proper Supabase Storage URL
           uploaded_by: user.id,
           status: 'pending'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
+
+      console.log('Paper saved successfully to database');
 
       toast({
         title: "Paper uploaded successfully!",
