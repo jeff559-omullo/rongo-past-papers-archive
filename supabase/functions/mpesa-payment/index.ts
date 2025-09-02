@@ -78,25 +78,34 @@ serve(async (req) => {
 
     // Step 2: Initiate STK Push
     const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14)
-    const businessShortCode = '174379' // Sandbox business short code
-    const passkey = 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919' // Sandbox passkey
+    const businessShortCode = '174379' // Test business short code
+    const passkey = 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919' // Test passkey
     
     const password = btoa(`${businessShortCode}${passkey}${timestamp}`)
 
-    // Ensure phone number is in correct format
-    const formattedPhone = phoneNumber.startsWith('254') ? phoneNumber : `254${phoneNumber.substring(1)}`
+    // Ensure phone number is in correct format (254XXXXXXXXX)
+    let formattedPhone = phoneNumber.trim()
+    if (formattedPhone.startsWith('0')) {
+      formattedPhone = `254${formattedPhone.substring(1)}`
+    } else if (formattedPhone.startsWith('+254')) {
+      formattedPhone = formattedPhone.substring(1)
+    } else if (!formattedPhone.startsWith('254')) {
+      formattedPhone = `254${formattedPhone}`
+    }
+
+    console.log('Formatted phone number:', formattedPhone)
 
     const stkPushPayload = {
       BusinessShortCode: businessShortCode,
       Password: password,
       Timestamp: timestamp,
       TransactionType: 'CustomerPayBillOnline',
-      Amount: amount,
+      Amount: Math.floor(amount), // Ensure amount is integer
       PartyA: formattedPhone,
       PartyB: businessShortCode,
       PhoneNumber: formattedPhone,
       CallBackURL: `https://zjecjayanqsjomtnsxmh.supabase.co/functions/v1/mpesa-callback`,
-      AccountReference: `PAPER${paymentId.slice(-8)}`,
+      AccountReference: `PAPER${paymentId.slice(-8).toUpperCase()}`,
       TransactionDesc: 'Rongo University Past Papers Access'
     }
 
