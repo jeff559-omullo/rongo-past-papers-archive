@@ -40,8 +40,16 @@ serve(async (req) => {
     const consumerKey = Deno.env.get('MPESA_CONSUMER_KEY')
     const consumerSecret = Deno.env.get('MPESA_CONSUMER_SECRET')
 
+    console.log('Checking M-Pesa credentials availability:', {
+      hasConsumerKey: !!consumerKey,
+      hasConsumerSecret: !!consumerSecret,
+      consumerKeyLength: consumerKey?.length || 0,
+      consumerSecretLength: consumerSecret?.length || 0
+    })
+
     if (!consumerKey || !consumerSecret) {
       console.error('M-Pesa credentials not found in environment')
+      console.error('Available env vars:', Object.keys(Deno.env.toObject()).filter(key => key.includes('MPESA')))
       throw new Error('M-Pesa credentials not configured')
     }
 
