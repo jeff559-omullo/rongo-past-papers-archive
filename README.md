@@ -1,6 +1,6 @@
 
 
-## How can I edit this code?
+## How to use this code
 
 
 
