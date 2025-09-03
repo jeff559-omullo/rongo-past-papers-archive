@@ -64,26 +64,46 @@ serve(async (req) => {
     
     console.log('Attempting to get M-Pesa access token...')
     
-    const tokenResponse = await fetch('https://sandbox-api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Basic ${authString}`,
-        'Content-Type': 'application/json',
-      },
-    })
+    // Try different Safaricom API endpoints
+    const tokenUrls = [
+      'https://sandbox-api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
+      'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
+    ]
+    
+    let tokenResponse
+    let tokenData
+    let accessToken
+    
+    for (const tokenUrl of tokenUrls) {
+      try {
+        console.log(`Trying token URL: ${tokenUrl}`)
+        
+        tokenResponse = await fetch(tokenUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Basic ${authString}`,
+            'Content-Type': 'application/json',
+          },
+        })
 
-    if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text()
-      console.error('Token request failed:', errorText)
-      throw new Error(`Failed to get access token: ${tokenResponse.status} ${tokenResponse.statusText}`)
+        if (tokenResponse.ok) {
+          tokenData = await tokenResponse.json()
+          accessToken = tokenData.access_token
+          console.log('Successfully got access token from:', tokenUrl)
+          break
+        } else {
+          const errorText = await tokenResponse.text()
+          console.error(`Token request failed for ${tokenUrl}:`, errorText)
+        }
+      } catch (error) {
+        console.error(`Error with ${tokenUrl}:`, error.message)
+        continue
+      }
     }
 
-    const tokenData = await tokenResponse.json()
-    const accessToken = tokenData.access_token
-
     if (!accessToken) {
-      console.error('No access token in response:', tokenData)
-      throw new Error('No access token received from Safaricom')
+      console.error('Failed to get access token from all endpoints')
+      throw new Error('Failed to get access token from Safaricom API')
     }
 
     console.log('M-Pesa access token obtained successfully')
@@ -123,23 +143,45 @@ serve(async (req) => {
 
     console.log('Initiating STK Push with payload:', JSON.stringify(stkPushPayload, null, 2))
 
-    const stkResponse = await fetch('https://sandbox-api.safaricom.co.ke/mpesa/stkpush/v1/processrequest', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(stkPushPayload),
-    })
+    // Try different STK Push endpoints
+    const stkUrls = [
+      'https://sandbox-api.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
+      'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
+    ]
+    
+    let stkResponse
+    let stkData
+    
+    for (const stkUrl of stkUrls) {
+      try {
+        console.log(`Trying STK Push URL: ${stkUrl}`)
+        
+        stkResponse = await fetch(stkUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(stkPushPayload),
+        })
 
-    if (!stkResponse.ok) {
-      const errorText = await stkResponse.text()
-      console.error('STK Push request failed:', errorText)
-      throw new Error(`STK Push failed: ${stkResponse.status} ${stkResponse.statusText}`)
+        if (stkResponse.ok) {
+          stkData = await stkResponse.json()
+          console.log('STK Push response received from:', stkUrl, JSON.stringify(stkData, null, 2))
+          break
+        } else {
+          const errorText = await stkResponse.text()
+          console.error(`STK Push request failed for ${stkUrl}:`, errorText)
+        }
+      } catch (error) {
+        console.error(`Error with STK Push ${stkUrl}:`, error.message)
+        continue
+      }
     }
 
-    const stkData = await stkResponse.json()
-    console.log('STK Push response received:', JSON.stringify(stkData, null, 2))
+    if (!stkData) {
+      throw new Error('Failed to initiate STK Push from all endpoints')
+    }
 
     if (stkData.ResponseCode !== '0') {
       console.error('STK Push error response:', stkData)
