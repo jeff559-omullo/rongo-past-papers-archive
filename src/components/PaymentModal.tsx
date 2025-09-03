@@ -195,13 +195,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onPaymentS
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[95vw] max-w-md mx-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-lg">
             <CreditCard className="h-5 w-5" />
             Complete Payment - KSH 10
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm">
             Pay KSH 10 to get unlimited access to all past papers for 4 months.
           </DialogDescription>
         </DialogHeader>
@@ -242,19 +242,19 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onPaymentS
               </p>
             </div>
 
-            <div className="flex gap-2 pt-4">
+            <div className="flex flex-col sm:flex-row gap-2 pt-4">
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={handleClose}
-                className="flex-1"
+                className="w-full sm:flex-1 order-2 sm:order-1"
                 disabled={isProcessing}
               >
                 Cancel
               </Button>
               <Button 
                 type="submit" 
-                className="flex-1"
+                className="w-full sm:flex-1 order-1 sm:order-2"
                 disabled={isProcessing || !phoneNumber}
               >
                 <CreditCard className="mr-2 h-4 w-4" />
