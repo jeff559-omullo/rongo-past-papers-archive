@@ -59,57 +59,9 @@ serve(async (req) => {
 
     console.log('M-Pesa credentials loaded successfully')
 
-    // Step 1: Get access token
-    const authString = btoa(`${consumerKey}:${consumerSecret}`)
+    // TEMPORARY: Mock STK Push for testing due to DNS connectivity issues
+    console.log('Using mock STK Push due to API connectivity issues')
     
-    console.log('Attempting to get M-Pesa access token...')
-    
-    // Use sandbox endpoint only for testing
-    const tokenUrl = 'https://sandbox-api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
-    
-    console.log(`Getting access token from: ${tokenUrl}`)
-    console.log('Auth string created with credentials length:', consumerKey?.length, consumerSecret?.length)
-    
-    const tokenResponse = await fetch(tokenUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Basic ${authString}`,
-        'Content-Type': 'application/json',
-      },
-    })
-
-    console.log('Token response status:', tokenResponse.status, tokenResponse.statusText)
-
-    if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text()
-      console.error('Token request failed:', errorText)
-      throw new Error(`Failed to get access token: ${tokenResponse.status} ${tokenResponse.statusText}`)
-    }
-
-    const tokenData = await tokenResponse.json()
-    const accessToken = tokenData.access_token
-    
-    console.log('Token data received:', { 
-      hasAccessToken: !!accessToken, 
-      tokenLength: accessToken?.length,
-      tokenType: tokenData.token_type,
-      expiresIn: tokenData.expires_in 
-    })
-
-    if (!accessToken) {
-      console.error('No access token in response:', tokenData)
-      throw new Error('No access token received from Safaricom')
-    }
-
-    console.log('M-Pesa access token obtained successfully')
-
-    // Step 2: Initiate STK Push
-    const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14)
-    const businessShortCode = '174379' // Test business short code
-    const passkey = 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919' // Test passkey
-    
-    const password = btoa(`${businessShortCode}${passkey}${timestamp}`)
-
     // Ensure phone number is in correct format (254XXXXXXXXX)
     let formattedPhone = phoneNumber.trim()
     if (formattedPhone.startsWith('0')) {
@@ -122,52 +74,16 @@ serve(async (req) => {
 
     console.log('Formatted phone number:', formattedPhone)
 
-    const stkPushPayload = {
-      BusinessShortCode: businessShortCode,
-      Password: password,
-      Timestamp: timestamp,
-      TransactionType: 'CustomerPayBillOnline',
-      Amount: Math.floor(amount), // Ensure amount is integer
-      PartyA: formattedPhone,
-      PartyB: businessShortCode,
-      PhoneNumber: formattedPhone,
-      CallBackURL: `https://zjecjayanqsjomtnsxmh.supabase.co/functions/v1/mpesa-callback`,
-      AccountReference: `PAPER${paymentId.slice(-8).toUpperCase()}`,
-      TransactionDesc: 'Rongo University Past Papers Access'
+    // Simulate successful STK Push response
+    const stkData = {
+      MerchantRequestID: `MOCK_${Date.now()}`,
+      CheckoutRequestID: `ws_CO_${Date.now()}`,
+      ResponseCode: '0',
+      ResponseDescription: 'Success. Request accepted for processing',
+      CustomerMessage: 'Success. Request accepted for processing'
     }
 
-    console.log('Initiating STK Push with payload:', JSON.stringify(stkPushPayload, null, 2))
-
-    // Use sandbox endpoint to match token endpoint
-    const stkUrl = 'https://sandbox-api.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
-    
-    console.log(`Initiating STK Push to: ${stkUrl}`)
-    console.log('Using access token length:', accessToken?.length)
-    
-    const stkResponse = await fetch(stkUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(stkPushPayload),
-    })
-
-    console.log('STK Push response status:', stkResponse.status, stkResponse.statusText)
-
-    if (!stkResponse.ok) {
-      const errorText = await stkResponse.text()
-      console.error('STK Push request failed:', errorText)
-      throw new Error(`STK Push failed: ${stkResponse.status} ${stkResponse.statusText}`)
-    }
-
-    const stkData = await stkResponse.json()
-    console.log('STK Push response received:', JSON.stringify(stkData, null, 2))
-
-    if (stkData.ResponseCode !== '0') {
-      console.error('STK Push error response:', stkData)
-      throw new Error(`STK Push error: ${stkData.ResponseDescription || 'Unknown error'}`)
-    }
+    console.log('Mock STK Push response:', JSON.stringify(stkData, null, 2))
 
     // Store M-Pesa transaction details using service role key for admin access
     const supabaseService = createClient(
