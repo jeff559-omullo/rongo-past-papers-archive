@@ -108,10 +108,52 @@ serve(async (req) => {
 
     console.log('M-Pesa transaction stored successfully')
 
+    // For mock mode, simulate successful payment callback after 10 seconds
+    setTimeout(async () => {
+      try {
+        console.log('Simulating successful payment callback for testing...')
+        
+        // Update M-Pesa transaction with successful result
+        const { error: mpesaUpdateError } = await supabaseService
+          .from('mpesa_transactions')
+          .update({
+            result_code: 0,
+            result_desc: 'The service request is processed successfully.',
+            mpesa_receipt_number: `MOCK${Date.now()}`,
+            amount: amount,
+            updated_at: new Date().toISOString()
+          })
+          .eq('checkout_request_id', stkData.CheckoutRequestID)
+
+        if (mpesaUpdateError) {
+          console.error('Error updating mock M-Pesa transaction:', mpesaUpdateError)
+          return
+        }
+
+        // Update payment status to completed
+        const { error: paymentUpdateError } = await supabaseService
+          .from('user_payments')
+          .update({ 
+            status: 'completed',
+            transaction_id: `MOCK${Date.now()}`
+          })
+          .eq('id', paymentId)
+
+        if (paymentUpdateError) {
+          console.error('Error updating mock payment status:', paymentUpdateError)
+          return
+        }
+
+        console.log(`Mock payment ${paymentId} completed successfully`)
+      } catch (error) {
+        console.error('Error in mock callback simulation:', error)
+      }
+    }, 10000) // 10 seconds delay to simulate processing time
+
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Payment request sent to your phone. Please check your phone and enter your M-Pesa PIN.',
+        message: 'Payment request sent to your phone. Please check your phone and enter your M-Pesa PIN. (Using test mode - payment will complete automatically in 10 seconds)',
         merchantRequestId: stkData.MerchantRequestID,
         checkoutRequestId: stkData.CheckoutRequestID
       }),
