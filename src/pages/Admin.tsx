@@ -21,7 +21,8 @@ import {
   Download,
   School,
   LogOut,
-  Upload
+  Upload,
+  Trash2
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -192,6 +193,35 @@ const Admin = () => {
       toast({
         title: "Error",
         description: "Failed to update paper status.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeletePaper = async (paperId: string, paperTitle: string) => {
+    if (!confirm(`Are you sure you want to delete "${paperTitle}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('papers')
+        .delete()
+        .eq('id', paperId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Paper Deleted",
+        description: "Paper has been permanently deleted.",
+      });
+
+      fetchPapers();
+    } catch (error) {
+      console.error('Error deleting paper:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete paper.",
         variant: "destructive"
       });
     }
@@ -390,17 +420,18 @@ const Admin = () => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Sheet>
-                              <SheetTrigger asChild>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => setSelectedPaper(paper)}
-                                >
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  Review
-                                </Button>
-                              </SheetTrigger>
+                            <div className="flex gap-2">
+                              <Sheet>
+                                <SheetTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => setSelectedPaper(paper)}
+                                  >
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    Review
+                                  </Button>
+                                </SheetTrigger>
                               <SheetContent>
                                 <SheetHeader>
                                   <SheetTitle>Review Paper</SheetTitle>
@@ -454,7 +485,16 @@ const Admin = () => {
                                   </div>
                                 )}
                               </SheetContent>
-                            </Sheet>
+                              </Sheet>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleDeletePaper(paper.id, paper.title)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
