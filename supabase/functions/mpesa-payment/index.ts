@@ -59,9 +59,25 @@ serve(async (req) => {
 
     console.log('M-Pesa credentials loaded successfully')
 
-    // TEMPORARY: Mock STK Push for testing due to DNS connectivity issues
-    console.log('Using mock STK Push due to API connectivity issues')
+    // Step 1: Get OAuth access token
+    const authString = btoa(`${consumerKey}:${consumerSecret}`)
     
+    console.log('Getting M-Pesa OAuth token...')
+    const authResponse = await fetch('https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${authString}`,
+      },
+    })
+
+    if (!authResponse.ok) {
+      console.error('Failed to get OAuth token:', authResponse.status, authResponse.statusText)
+      throw new Error('Failed to authenticate with M-Pesa')
+    }
+
+    const authData = await authResponse.json()
+    console.log('OAuth token received successfully')
+
     // Ensure phone number is in correct format (254XXXXXXXXX)
     let formattedPhone = phoneNumber.trim()
     if (formattedPhone.startsWith('0')) {
@@ -74,16 +90,51 @@ serve(async (req) => {
 
     console.log('Formatted phone number:', formattedPhone)
 
-    // Simulate successful STK Push response
-    const stkData = {
-      MerchantRequestID: `MOCK_${Date.now()}`,
-      CheckoutRequestID: `ws_CO_${Date.now()}`,
-      ResponseCode: '0',
-      ResponseDescription: 'Success. Request accepted for processing',
-      CustomerMessage: 'Success. Request accepted for processing'
+    // Step 2: Initiate STK Push
+    const timestamp = new Date().toISOString().replace(/[T\-:\.Z]/g, '').substring(0, 14)
+    const shortcode = '174379'  // Safaricom sandbox shortcode
+    const passkey = 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919'  // Sandbox passkey
+    const password = btoa(`${shortcode}${passkey}${timestamp}`)
+
+    const stkPayload = {
+      BusinessShortCode: shortcode,
+      Password: password,
+      Timestamp: timestamp,
+      TransactionType: 'CustomerPayBillOnline',
+      Amount: amount,
+      PartyA: formattedPhone,
+      PartyB: shortcode,
+      PhoneNumber: formattedPhone,
+      CallBackURL: `https://zjecjayanqsjomtnsxmh.supabase.co/functions/v1/mpesa-callback`,
+      AccountReference: `RONGO_${paymentId}`,
+      TransactionDesc: 'Rongo University Past Papers Access'
     }
 
-    console.log('Mock STK Push response:', JSON.stringify(stkData, null, 2))
+    console.log('Sending STK Push request...', JSON.stringify(stkPayload, null, 2))
+
+    const stkResponse = await fetch('https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authData.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(stkPayload),
+    })
+
+    if (!stkResponse.ok) {
+      console.error('STK Push failed:', stkResponse.status, stkResponse.statusText)
+      const errorText = await stkResponse.text()
+      console.error('STK Push error response:', errorText)
+      throw new Error('Failed to initiate M-Pesa payment')
+    }
+
+    const stkData = await stkResponse.json()
+    console.log('STK Push response:', JSON.stringify(stkData, null, 2))
+
+    if (stkData.ResponseCode !== '0') {
+      console.error('STK Push request failed:', stkData.ResponseDescription)
+      throw new Error(stkData.ResponseDescription || 'Payment request failed')
+    }
 
     // Store M-Pesa transaction details using service role key for admin access
     const supabaseService = createClient(
@@ -108,52 +159,10 @@ serve(async (req) => {
 
     console.log('M-Pesa transaction stored successfully')
 
-    // For mock mode, simulate successful payment callback after 10 seconds
-    setTimeout(async () => {
-      try {
-        console.log('Simulating successful payment callback for testing...')
-        
-        // Update M-Pesa transaction with successful result
-        const { error: mpesaUpdateError } = await supabaseService
-          .from('mpesa_transactions')
-          .update({
-            result_code: 0,
-            result_desc: 'The service request is processed successfully.',
-            mpesa_receipt_number: `MOCK${Date.now()}`,
-            amount: amount,
-            updated_at: new Date().toISOString()
-          })
-          .eq('checkout_request_id', stkData.CheckoutRequestID)
-
-        if (mpesaUpdateError) {
-          console.error('Error updating mock M-Pesa transaction:', mpesaUpdateError)
-          return
-        }
-
-        // Update payment status to completed
-        const { error: paymentUpdateError } = await supabaseService
-          .from('user_payments')
-          .update({ 
-            status: 'completed',
-            transaction_id: `MOCK${Date.now()}`
-          })
-          .eq('id', paymentId)
-
-        if (paymentUpdateError) {
-          console.error('Error updating mock payment status:', paymentUpdateError)
-          return
-        }
-
-        console.log(`Mock payment ${paymentId} completed successfully`)
-      } catch (error) {
-        console.error('Error in mock callback simulation:', error)
-      }
-    }, 10000) // 10 seconds delay to simulate processing time
-
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Payment request sent to your phone. Please check your phone and enter your M-Pesa PIN. (Using test mode - payment will complete automatically in 10 seconds)',
+        message: 'Payment request sent to your phone. Please check your phone and enter your M-Pesa PIN to complete the payment.',
         merchantRequestId: stkData.MerchantRequestID,
         checkoutRequestId: stkData.CheckoutRequestID
       }),
