@@ -34,7 +34,7 @@ serve(async (req) => {
 
     const { phoneNumber, amount, paymentId }: PaymentRequest = await req.json()
 
-    console.log('Processing M-Pesa payment:', { phoneNumber, amount, paymentId })
+    console.log('Processing M-Pesa payment request:', { phoneNumber, amount, paymentId })
 
     // Get M-Pesa credentials from secrets
     const consumerKey = Deno.env.get('MPESA_CONSUMER_KEY')
