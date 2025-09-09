@@ -21,7 +21,8 @@ const AdminPaperUpload: React.FC<AdminPaperUploadProps> = ({ onUpload }) => {
   const { toast } = useToast();
   const [selectedSchool, setSelectedSchool] = useState<string>('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [courseCode, setCourseCode] = useState<string>('');
+  const [courseName, setCourseName] = useState<string>('');
   const [paperData, setPaperData] = useState({
     title: '',
     year: 1 as 1 | 2 | 3 | 4,
@@ -52,7 +53,7 @@ const AdminPaperUpload: React.FC<AdminPaperUploadProps> = ({ onUpload }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCourse || !paperData.fileUrl || !user) {
+    if (!courseCode || !courseName || !paperData.fileUrl || !user) {
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields and upload a file.",
@@ -70,9 +71,9 @@ const AdminPaperUpload: React.FC<AdminPaperUploadProps> = ({ onUpload }) => {
         .from('papers')
         .insert({
           title: paperData.title,
-          course_id: selectedCourse.id,
-          course_name: selectedCourse.name,
-          course_code: selectedCourse.code,
+          course_id: `${courseCode}-${courseName}`.toLowerCase().replace(/\s+/g, '-'),
+          course_name: courseName,
+          course_code: courseCode,
           year: paperData.year,
           exam_type: paperData.examType,
           academic_year: paperData.academicYear,
@@ -110,7 +111,8 @@ const AdminPaperUpload: React.FC<AdminPaperUploadProps> = ({ onUpload }) => {
       });
       setSelectedSchool('');
       setSelectedDepartment('');
-      setSelectedCourse(null);
+      setCourseCode('');
+      setCourseName('');
 
       // Refresh the papers list
       onUpload();
@@ -179,27 +181,28 @@ const AdminPaperUpload: React.FC<AdminPaperUploadProps> = ({ onUpload }) => {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="course">Course</Label>
-              <Select 
-                value={selectedCourse?.id || ''} 
-                onValueChange={(value) => {
-                  const course = filteredCourses.find(c => c.id === value);
-                  setSelectedCourse(course || null);
-                }}
-                disabled={!selectedDepartment}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select course" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredCourses.map(course => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {course.code} - {course.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="courseCode">Course Code</Label>
+                <Input
+                  id="courseCode"
+                  value={courseCode}
+                  onChange={(e) => setCourseCode(e.target.value)}
+                  placeholder="e.g., CS101, ENG201"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="courseName">Course Name</Label>
+                <Input
+                  id="courseName"
+                  value={courseName}
+                  onChange={(e) => setCourseName(e.target.value)}
+                  placeholder="e.g., Introduction to Computer Science"
+                  required
+                />
+              </div>
             </div>
 
             <div>
@@ -288,7 +291,7 @@ const AdminPaperUpload: React.FC<AdminPaperUploadProps> = ({ onUpload }) => {
             <Button 
               type="submit" 
               className="w-full bg-blue-600 hover:bg-blue-700" 
-              disabled={!selectedCourse || !paperData.fileUrl || uploading}
+              disabled={!courseCode || !courseName || !paperData.fileUrl || uploading}
             >
               <FileText className="h-4 w-4 mr-2" />
               {uploading ? 'Uploading...' : 'Upload Paper (Auto-Approved)'}
