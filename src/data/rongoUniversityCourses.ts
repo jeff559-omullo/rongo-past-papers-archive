@@ -196,6 +196,36 @@ export const rongoUniversityData: School[] = [
           { id: 'course-phd-information-science', code: 'PHD IS', name: 'Doctor of Philosophy in Information Science', department: 'Doctorate Programs', school: 'School of Information Communication and Media Studies' },
           { id: 'course-phd-health-informatics', code: 'PHD HI', name: 'Doctor of Philosophy in Health Informatics', department: 'Doctorate Programs', school: 'School of Information Communication and Media Studies' }
         ]
+      },
+      {
+        id: 'dept-masters-programs-icms',
+        name: 'Masters Programs',
+        schoolId: 'school-information-communication-media',
+        courses: [
+          { id: 'course-msc-information-technology', code: 'MSC IT', name: 'Master of Science in Information Technology', department: 'Masters Programs', school: 'School of Information Communication and Media Studies' },
+          { id: 'course-msc-data-science', code: 'MSC DS', name: 'Master of Science in Data Science', department: 'Masters Programs', school: 'School of Information Communication and Media Studies' },
+          { id: 'course-msc-software-engineering', code: 'MSC SE', name: 'Master of Science in Software Engineering', department: 'Masters Programs', school: 'School of Information Communication and Media Studies' },
+          { id: 'course-msc-cyber-security', code: 'MSC CYB', name: 'Master of Science in Cyber Security', department: 'Masters Programs', school: 'School of Information Communication and Media Studies' },
+          { id: 'course-ma-digital-media', code: 'MA DM', name: 'Master of Arts in Digital Media and Communication', department: 'Masters Programs', school: 'School of Information Communication and Media Studies' },
+          { id: 'course-ma-journalism', code: 'MA JOUR', name: 'Master of Arts in Journalism and Mass Communication', department: 'Masters Programs', school: 'School of Information Communication and Media Studies' }
+        ]
+      },
+      {
+        id: 'dept-undergraduate-programs-icms',
+        name: 'Undergraduate Programs',
+        schoolId: 'school-information-communication-media',
+        courses: [
+          { id: 'course-bsc-information-technology', code: 'BSC IT', name: 'Bachelor of Science in Information Technology', department: 'Undergraduate Programs', school: 'School of Information Communication and Media Studies' },
+          { id: 'course-bsc-computer-science-icms', code: 'BSC CS', name: 'Bachelor of Science in Computer Science', department: 'Undergraduate Programs', school: 'School of Information Communication and Media Studies' },
+          { id: 'course-bsc-software-engineering', code: 'BSC SE', name: 'Bachelor of Science in Software Engineering', department: 'Undergraduate Programs', school: 'School of Information Communication and Media Studies' },
+          { id: 'course-bsc-data-science-icms', code: 'BSC DS', name: 'Bachelor of Science in Data Science', department: 'Undergraduate Programs', school: 'School of Information Communication and Media Studies' },
+          { id: 'course-bsc-cyber-security', code: 'BSC CYB', name: 'Bachelor of Science in Cyber Security', department: 'Undergraduate Programs', school: 'School of Information Communication and Media Studies' },
+          { id: 'course-bsc-network-administration', code: 'BSC NA', name: 'Bachelor of Science in Network Administration', department: 'Undergraduate Programs', school: 'School of Information Communication and Media Studies' },
+          { id: 'course-ba-digital-media', code: 'BA DM', name: 'Bachelor of Arts in Digital Media and Communication', department: 'Undergraduate Programs', school: 'School of Information Communication and Media Studies' },
+          { id: 'course-ba-journalism-icms', code: 'BA JOUR', name: 'Bachelor of Arts in Journalism and Mass Communication', department: 'Undergraduate Programs', school: 'School of Information Communication and Media Studies' },
+          { id: 'course-ba-public-relations', code: 'BA PR', name: 'Bachelor of Arts in Public Relations', department: 'Undergraduate Programs', school: 'School of Information Communication and Media Studies' },
+          { id: 'course-ba-broadcasting', code: 'BA BROAD', name: 'Bachelor of Arts in Broadcasting and Electronic Media', department: 'Undergraduate Programs', school: 'School of Information Communication and Media Studies' }
+        ]
       }
     ]
   }
