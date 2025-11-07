@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { School, Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { School, Mail, Lock, User, ArrowRight, Chrome } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -52,6 +53,23 @@ const Auth = () => {
     };
     checkUser();
   }, [navigate]);
+
+  // Listen for Supabase auth events (helps password recovery flow)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsUpdatingPassword(true);
+      }
+      if (event === 'USER_UPDATED') {
+        navigate('/');
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  useEffect(() => {
+    document.title = 'Login | Rongo University Past Papers';
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,6 +146,23 @@ const Auth = () => {
     
     setIsLoading(false);
   };
+
+  const handleGoogleAuth = async () => {
+    setIsLoading(true);
+    setError(null);
+    const redirectUrl = `${window.location.origin}/`;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: redirectUrl }
+    });
+
+    if (error) {
+      setError(error.message);
+      toast({ title: 'Google Sign-in failed', description: error.message, variant: 'destructive' });
+      setIsLoading(false);
+    }
+    // On success, Supabase redirects to Google then back to our app
+  }; 
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -366,6 +401,15 @@ const Auth = () => {
                       </>
                     )}
                   </Button>
+
+                  <div className="relative my-4">
+                    <Separator />
+                    <span className="absolute left-1/2 -translate-x-1/2 -top-3 bg-card px-2 text-xs text-muted-foreground">or</span>
+                  </div>
+
+                  <Button type="button" variant="outline" className="w-full h-11 hover-scale" onClick={handleGoogleAuth}>
+                    <Chrome className="mr-2 h-4 w-4" /> Continue with Google
+                  </Button>
                 </form>
               </TabsContent>
 
@@ -432,6 +476,15 @@ const Auth = () => {
                         Create Account
                       </>
                     )}
+                  </Button>
+
+                  <div className="relative my-4">
+                    <Separator />
+                    <span className="absolute left-1/2 -translate-x-1/2 -top-3 bg-card px-2 text-xs text-muted-foreground">or</span>
+                  </div>
+
+                  <Button type="button" variant="outline" className="w-full h-11 hover-scale" onClick={handleGoogleAuth}>
+                    <Chrome className="mr-2 h-4 w-4" /> Continue with Google
                   </Button>
                 </form>
               </TabsContent>
