@@ -205,24 +205,26 @@ const Auth = () => {
   // Show password update form if user clicked reset link
   if (isUpdatingPassword) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center mb-4">
-              <School className="h-12 w-12 text-blue-600" />
+      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-md animate-fade-in">
+          <div className="text-center mb-6 sm:mb-8">
+            <div className="flex items-center justify-center mb-4 animate-scale-in">
+              <div className="p-3 sm:p-4 bg-primary/10 rounded-full">
+                <School className="h-10 w-10 sm:h-12 sm:w-12 text-primary" />
+              </div>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Update Password</h1>
-            <p className="text-gray-600">Enter your new password below</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Update Password</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Enter your new password below</p>
           </div>
 
-          <Card>
-            <CardHeader className="text-center">
-              <CardTitle>Set New Password</CardTitle>
-              <CardDescription>
+          <Card className="border-2 shadow-xl">
+            <CardHeader className="text-center space-y-2">
+              <CardTitle className="text-xl sm:text-2xl">Set New Password</CardTitle>
+              <CardDescription className="text-sm">
                 Choose a strong password for your account
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-4 sm:px-6">
               {error && (
                 <Alert className="mb-4 border-red-200 bg-red-50">
                   <AlertDescription className="text-red-800">{error}</AlertDescription>
@@ -283,74 +285,80 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
-            <School className="h-12 w-12 text-blue-600" />
+    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md animate-fade-in">
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="flex items-center justify-center mb-4 animate-scale-in">
+            <div className="p-3 sm:p-4 bg-primary/10 rounded-full hover-scale">
+              <School className="h-10 w-10 sm:h-12 sm:w-12 text-primary" />
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Rongo University</h1>
-          <p className="text-gray-600">Access Past Papers Collection</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent mb-2">
+            Rongo University
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Access Past Papers Collection</p>
         </div>
 
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle>Authentication Required</CardTitle>
-            <CardDescription>
+        <Card className="border-2 shadow-xl backdrop-blur-sm bg-card/95">
+          <CardHeader className="text-center space-y-2">
+            <CardTitle className="text-xl sm:text-2xl">Authentication Required</CardTitle>
+            <CardDescription className="text-sm">
               Sign in or create an account to access past papers
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 sm:px-6">
             <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-                <TabsTrigger value="reset">Reset</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3 h-auto p-1">
+                <TabsTrigger value="login" className="text-xs sm:text-sm py-2">Login</TabsTrigger>
+                <TabsTrigger value="signup" className="text-xs sm:text-sm py-2">Sign Up</TabsTrigger>
+                <TabsTrigger value="reset" className="text-xs sm:text-sm py-2">Reset</TabsTrigger>
               </TabsList>
 
               {error && (
-                <Alert className="mt-4 border-red-200 bg-red-50">
-                  <AlertDescription className="text-red-800">{error}</AlertDescription>
+                <Alert className="mt-4 border-destructive/50 bg-destructive/10 animate-fade-in">
+                  <AlertDescription className="text-destructive text-sm">{error}</AlertDescription>
                 </Alert>
               )}
 
-              <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div>
-                    <Label htmlFor="login-email">Email</Label>
+              <TabsContent value="login" className="animate-fade-in">
+                <form onSubmit={handleLogin} className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email" className="text-sm font-medium">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="login-email"
                         type="email"
                         placeholder="your.email@example.com"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
-                        className="pl-10"
+                        className="pl-10 h-11 transition-all focus:ring-2 focus:ring-primary"
                         required
                       />
                     </div>
                   </div>
                   
-                  <div>
-                    <Label htmlFor="login-password">Password</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password" className="text-sm font-medium">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="login-password"
                         type="password"
                         placeholder="Your password"
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
-                        className="pl-10"
+                        className="pl-10 h-11 transition-all focus:ring-2 focus:ring-primary"
                         required
                       />
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full h-11 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all hover-scale" disabled={isLoading}>
                     {isLoading ? (
-                      "Signing in..."
+                      <span className="flex items-center gap-2">
+                        <span className="animate-pulse">Signing in...</span>
+                      </span>
                     ) : (
                       <>
                         Sign In
@@ -361,61 +369,63 @@ const Auth = () => {
                 </form>
               </TabsContent>
 
-              <TabsContent value="signup">
-                <form onSubmit={handleSignup} className="space-y-4">
-                  <div>
-                    <Label htmlFor="signup-email">Email</Label>
+              <TabsContent value="signup" className="animate-fade-in">
+                <form onSubmit={handleSignup} className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email" className="text-sm font-medium">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="signup-email"
                         type="email"
                         placeholder="your.email@example.com"
                         value={signupEmail}
                         onChange={(e) => setSignupEmail(e.target.value)}
-                        className="pl-10"
+                        className="pl-10 h-11 transition-all focus:ring-2 focus:ring-primary"
                         required
                       />
                     </div>
                   </div>
                   
-                  <div>
-                    <Label htmlFor="signup-password">Password</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password" className="text-sm font-medium">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="signup-password"
                         type="password"
                         placeholder="Choose a strong password"
                         value={signupPassword}
                         onChange={(e) => setSignupPassword(e.target.value)}
-                        className="pl-10"
+                        className="pl-10 h-11 transition-all focus:ring-2 focus:ring-primary"
                         required
                         minLength={6}
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password" className="text-sm font-medium">Confirm Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="confirm-password"
                         type="password"
                         placeholder="Confirm your password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="pl-10"
+                        className="pl-10 h-11 transition-all focus:ring-2 focus:ring-primary"
                         required
                         minLength={6}
                       />
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full h-11 bg-gradient-to-r from-secondary to-secondary/80 hover:from-secondary/90 hover:to-secondary/70 transition-all hover-scale" disabled={isLoading}>
                     {isLoading ? (
-                      "Creating account..."
+                      <span className="flex items-center gap-2">
+                        <span className="animate-pulse">Creating account...</span>
+                      </span>
                     ) : (
                       <>
                         <User className="mr-2 h-4 w-4" />
@@ -426,46 +436,50 @@ const Auth = () => {
                 </form>
               </TabsContent>
 
-              <TabsContent value="reset">
+              <TabsContent value="reset" className="animate-fade-in">
                 {resetSent ? (
-                  <div className="space-y-4 text-center py-6">
-                    <Mail className="h-12 w-12 text-green-600 mx-auto" />
-                    <h3 className="text-lg font-semibold">Check your email</h3>
-                    <p className="text-sm text-gray-600">
+                  <div className="space-y-4 text-center py-8 animate-scale-in">
+                    <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+                      <Mail className="h-8 w-8 text-green-600 dark:text-green-500" />
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-semibold">Check your email</h3>
+                    <p className="text-sm text-muted-foreground px-4">
                       We've sent a password reset link to your email address. Click the link to reset your password.
                     </p>
                     <Button 
                       variant="outline" 
                       onClick={() => setResetSent(false)}
-                      className="w-full"
+                      className="w-full h-11 hover-scale"
                     >
                       Back to Reset
                     </Button>
                   </div>
                 ) : (
-                  <form onSubmit={handlePasswordReset} className="space-y-4">
-                    <div>
-                      <Label htmlFor="reset-email">Email</Label>
+                  <form onSubmit={handlePasswordReset} className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-email" className="text-sm font-medium">Email</Label>
                       <div className="relative">
-                        <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="reset-email"
                           type="email"
                           placeholder="your.email@example.com"
                           value={resetEmail}
                           onChange={(e) => setResetEmail(e.target.value)}
-                          className="pl-10"
+                          className="pl-10 h-11 transition-all focus:ring-2 focus:ring-primary"
                           required
                         />
                       </div>
-                      <p className="text-xs text-gray-500 mt-2">
+                      <p className="text-xs text-muted-foreground mt-2">
                         Enter your email address and we'll send you a link to reset your password.
                       </p>
                     </div>
 
-                    <Button type="submit" className="w-full" disabled={isLoading}>
+                    <Button type="submit" className="w-full h-11 bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 transition-all hover-scale" disabled={isLoading}>
                       {isLoading ? (
-                        "Sending reset link..."
+                        <span className="flex items-center gap-2">
+                          <span className="animate-pulse">Sending reset link...</span>
+                        </span>
                       ) : (
                         <>
                           Send Reset Link
@@ -480,8 +494,8 @@ const Auth = () => {
           </CardContent>
         </Card>
 
-        <div className="text-center mt-6">
-          <p className="text-sm text-gray-600">
+        <div className="text-center mt-6 px-4">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             By signing up, you agree to access past papers responsibly and in accordance with academic integrity guidelines.
           </p>
         </div>
