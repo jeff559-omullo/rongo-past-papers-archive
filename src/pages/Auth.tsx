@@ -328,7 +328,7 @@ const Auth = () => {
               <School className="h-10 w-10 sm:h-12 sm:w-12 text-primary" />
             </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent mb-2">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent mb-2 whitespace-nowrap px-2">
             Rongo University
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground">Access Past Papers Collection</p>
