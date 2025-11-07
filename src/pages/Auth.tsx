@@ -321,17 +321,17 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-md animate-fade-in">
+      <div className="w-full max-w-md animate-fade-in px-2">
         <div className="text-center mb-6 sm:mb-8">
           <div className="flex items-center justify-center mb-4 animate-scale-in">
             <div className="p-3 sm:p-4 bg-primary/10 rounded-full hover-scale">
               <School className="h-10 w-10 sm:h-12 sm:w-12 text-primary" />
             </div>
           </div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent mb-2 whitespace-nowrap px-2">
+          <h1 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent mb-2">
             Rongo University
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground">Access Past Papers Collection</p>
+          <p className="text-xs sm:text-sm md:text-base text-muted-foreground">Access Past Papers Collection</p>
         </div>
 
         <Card className="border-2 shadow-xl backdrop-blur-sm bg-card/95">
