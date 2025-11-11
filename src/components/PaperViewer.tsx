@@ -4,13 +4,7 @@ import { Button } from '@/components/ui/button';
 import { X, MessageSquare } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PaperAIChat from './PaperAIChat';
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
-// @ts-ignore
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { useToast } from '@/hooks/use-toast';
-
-// Set up PDF.js worker (bundle-local to avoid CDN/CORS issues)
-GlobalWorkerOptions.workerSrc = pdfjsWorker as any;
 
 interface PaperViewerProps {
   isOpen: boolean;
@@ -43,20 +37,23 @@ const PaperViewer: React.FC<PaperViewerProps> = ({ isOpen, onClose, paper }) => 
     
     setIsExtracting(true);
     try {
-      const loadingTask = getDocument(paper.file_url);
-      const pdf = await loadingTask.promise;
-      let fullText = '';
+      const response = await fetch('https://zjecjayanqsjomtnsxmh.supabase.co/functions/v1/extract-paper-text', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqZWNqYXlhbnFzam9tdG5zeG1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MTQ0OTQsImV4cCI6MjA2NzI5MDQ5NH0.vbFI2_wKy0B-jpLmCLdk6jHVdG9gTHjxEXrlH4E6F_I`
+        },
+        body: JSON.stringify({ fileUrl: paper.file_url })
+      });
 
-      for (let i = 1; i <= Math.min(pdf.numPages, 50); i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(' ');
-        fullText += pageText + '\n\n';
+      const result = await response.json();
+      
+      if (result.success && result.text) {
+        setPaperText(result.text);
+        console.log('Extracted text length:', result.text.length);
+      } else {
+        throw new Error(result.error || 'Failed to extract text');
       }
-
-      setPaperText(fullText);
     } catch (error) {
       console.error('Error extracting PDF text:', error);
       toast({
