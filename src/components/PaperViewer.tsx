@@ -4,11 +4,13 @@ import { Button } from '@/components/ui/button';
 import { X, MessageSquare } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PaperAIChat from './PaperAIChat';
-import * as pdfjsLib from 'pdfjs-dist';
+import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
+// @ts-ignore
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { useToast } from '@/hooks/use-toast';
 
-// Set up PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Set up PDF.js worker (bundle-local to avoid CDN/CORS issues)
+GlobalWorkerOptions.workerSrc = pdfjsWorker as any;
 
 interface PaperViewerProps {
   isOpen: boolean;
@@ -41,7 +43,7 @@ const PaperViewer: React.FC<PaperViewerProps> = ({ isOpen, onClose, paper }) => 
     
     setIsExtracting(true);
     try {
-      const loadingTask = pdfjsLib.getDocument(paper.file_url);
+      const loadingTask = getDocument(paper.file_url);
       const pdf = await loadingTask.promise;
       let fullText = '';
 
