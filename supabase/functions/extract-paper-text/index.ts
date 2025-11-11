@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
+// @deno-types="npm:@types/pdf-parse@1.1.4"
+import pdfParse from "npm:pdf-parse@1.1.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,27 +27,18 @@ serve(async (req) => {
       throw new Error(`Failed to fetch PDF: ${pdfResponse.statusText}`);
     }
 
-    const pdfArrayBuffer = await pdfResponse.arrayBuffer();
-    const pdfBytes = new Uint8Array(pdfArrayBuffer);
-
-    // Use pdf-parse library to extract text
-    // For now, we'll use a simple approach with PDF.js-like extraction
-    // In production, you might want to use a more robust library
+    const pdfBuffer = await pdfResponse.arrayBuffer();
     
-    // Simple text extraction - look for text objects in PDF
-    const textDecoder = new TextDecoder();
-    const pdfText = textDecoder.decode(pdfBytes);
+    console.log("Parsing PDF with pdf-parse...");
     
-    // Basic extraction of readable text from PDF structure
-    // This is a simplified approach - in production use proper PDF parsing
-    const textMatches = pdfText.match(/\(([^)]+)\)/g) || [];
-    const extractedText = textMatches
-      .map(match => match.slice(1, -1))
-      .filter(text => text.length > 2)
-      .join(' ')
-      .slice(0, 50000); // Limit to 50k chars
+    // Use pdf-parse to properly extract text
+    const data = await pdfParse(Buffer.from(pdfBuffer));
+    
+    // Limit to 50k characters for API context limits
+    const extractedText = data.text.slice(0, 50000);
 
-    console.log("Extracted text length:", extractedText.length);
+    console.log("Successfully extracted text length:", extractedText.length);
+    console.log("First 200 chars:", extractedText.slice(0, 200));
 
     return new Response(
       JSON.stringify({ 
