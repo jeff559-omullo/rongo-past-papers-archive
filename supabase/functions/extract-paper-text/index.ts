@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 // @deno-types="npm:@types/pdf-parse@1.1.4"
 import pdfParse from "npm:pdf-parse@1.1.1";
+import { Buffer } from "node:buffer";
+// Provide Buffer global for libraries expecting Node.js
+// deno-lint-ignore no-explicit-any
+// @ts-ignore
+(globalThis as any).Buffer = (globalThis as any).Buffer || Buffer;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,8 +37,8 @@ serve(async (req) => {
     console.log("Parsing PDF with pdf-parse...");
     
     // Use pdf-parse to properly extract text
-    // Pass ArrayBuffer directly - pdf-parse handles it
-    const data = await pdfParse(pdfBuffer);
+    // Pass a Uint8Array - compatible with pdf-parse in Deno Node-compat
+    const data = await pdfParse(new Uint8Array(pdfBuffer));
     
     // Limit to 50k characters for API context limits
     const extractedText = data.text.slice(0, 50000);
