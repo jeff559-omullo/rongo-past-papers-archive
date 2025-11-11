@@ -45,6 +45,9 @@ verify_jwt = true
 [functions.mpesa-callback]
 verify_jwt = false
 
+[functions.paper-chat]
+verify_jwt = false
+
 [auth]
 enabled = true
 port = 54326

@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Calendar, BookOpen, GraduationCap, Lock, CreditCard, Download } from 'lucide-react';
+import { Search, Calendar, BookOpen, GraduationCap, Lock, CreditCard, Eye } from 'lucide-react';
 import { Paper } from '@/types/papers';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import PaperViewer from './PaperViewer';
 
 interface PapersDisplayProps {
   hasAccess?: boolean;
@@ -27,6 +28,8 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({
   const [selectedSchool, setSelectedSchool] = useState<string>('all');
   const [selectedExamType, setSelectedExamType] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [selectedPaper, setSelectedPaper] = useState<any>(null);
 
   // Fetch approved papers from database
   useEffect(() => {
@@ -127,14 +130,14 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({
     }
   };
 
-  const handleDownload = async (paper: any) => {
+  const handleViewPaper = async (paper: any) => {
     if (!hasAccess) {
       onRequestPayment?.();
       return;
     }
 
     try {
-      // Increment download count
+      // Increment view count (using download_count field for now)
       await supabase
         .from('papers')
         .update({ 
@@ -142,18 +145,13 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({
         })
         .eq('id', paper.id);
 
-      // Open file in new tab
-      window.open(paper.file_url, '_blank');
-      
-      toast({
-        title: "Download Started",
-        description: "Paper is opening in a new tab.",
-      });
+      setSelectedPaper(paper);
+      setViewerOpen(true);
     } catch (error) {
-      console.error('Error downloading paper:', error);
+      console.error('Error viewing paper:', error);
       toast({
-        title: "Download Failed",
-        description: "There was an error downloading the paper.",
+        title: "Error",
+        description: "There was an error opening the paper.",
         variant: "destructive"
       });
     }
@@ -169,7 +167,21 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6">
+    <>
+      <PaperViewer
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        paper={selectedPaper ? {
+          id: selectedPaper.id,
+          title: selectedPaper.title,
+          file_url: selectedPaper.file_url,
+          course: {
+            code: selectedPaper.course_code,
+            name: selectedPaper.course_name
+          }
+        } : null}
+      />
+      <div className="w-full max-w-6xl mx-auto space-y-6">
       {/* Search and Filters */}
       <Card>
         <CardHeader>
@@ -328,10 +340,10 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({
                         {hasAccess ? (
                           <Button 
                             className="w-full"
-                            onClick={() => handleDownload(paper)}
+                            onClick={() => handleViewPaper(paper)}
                           >
-                            <Download className="h-4 w-4 mr-2" />
-                            Download Paper
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Paper
                           </Button>
                         ) : (
                           <>
@@ -386,7 +398,8 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
+    </>
   );
 };
 
