@@ -32,7 +32,8 @@ serve(async (req) => {
     console.log("Parsing PDF with pdf-parse...");
     
     // Use pdf-parse to properly extract text
-    const data = await pdfParse(Buffer.from(pdfBuffer));
+    // Pass ArrayBuffer directly - pdf-parse handles it
+    const data = await pdfParse(pdfBuffer);
     
     // Limit to 50k characters for API context limits
     const extractedText = data.text.slice(0, 50000);
