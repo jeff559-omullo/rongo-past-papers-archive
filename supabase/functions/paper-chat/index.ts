@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages, paperContext } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -19,6 +19,12 @@ serve(async (req) => {
     }
 
     console.log("Calling Lovable AI with Gemini model");
+
+    let systemPrompt = "You are a helpful academic assistant for Rongo University. You help students understand exam papers, explain concepts, and answer questions about academic content. Be clear, concise, and educational in your responses.";
+    
+    if (paperContext) {
+      systemPrompt += `\n\nYou are currently helping with the following paper:\nTitle: ${paperContext.title}\nCourse: ${paperContext.course}\n\nPaper Content:\n${paperContext.content}\n\nUse this content to answer questions accurately. Always reference specific parts of the paper when relevant.`;
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -31,7 +37,7 @@ serve(async (req) => {
         messages: [
           { 
             role: "system", 
-            content: "You are a helpful academic assistant for Rongo University. You help students understand exam papers, explain concepts, and answer questions about academic content. Be clear, concise, and educational in your responses."
+            content: systemPrompt
           },
           ...messages,
         ],

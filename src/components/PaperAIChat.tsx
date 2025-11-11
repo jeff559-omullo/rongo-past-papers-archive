@@ -18,13 +18,17 @@ interface PaperAIChatProps {
       name: string;
     };
   };
+  paperText: string;
+  isExtracting: boolean;
 }
 
-const PaperAIChat: React.FC<PaperAIChatProps> = ({ paper }) => {
+const PaperAIChat: React.FC<PaperAIChatProps> = ({ paper, paperText, isExtracting }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: `Hello! I'm here to help you with "${paper.title}". Ask me anything about this paper, exam concepts, or study tips!`
+      content: isExtracting 
+        ? `Loading paper content... Please wait.`
+        : `Hello! I'm here to help you with "${paper.title}". Ask me anything about this paper, exam concepts, or study tips!`
     }
   ]);
   const [input, setInput] = useState('');
@@ -51,7 +55,12 @@ const PaperAIChat: React.FC<PaperAIChatProps> = ({ paper }) => {
           'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqZWNqYXlhbnFzam9tdG5zeG1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MTQ0OTQsImV4cCI6MjA2NzI5MDQ5NH0.vbFI2_wKy0B-jpLmCLdk6jHVdG9gTHjxEXrlH4E6F_I`
         },
         body: JSON.stringify({
-          messages: newMessages.map(m => ({ role: m.role, content: m.content }))
+          messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+          paperContext: paperText ? {
+            title: paper.title,
+            course: `${paper.course.code} - ${paper.course.name}`,
+            content: paperText.slice(0, 30000) // Limit to ~30k chars
+          } : null
         })
       });
 
@@ -136,7 +145,7 @@ const PaperAIChat: React.FC<PaperAIChatProps> = ({ paper }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || isExtracting) return;
 
     const userMessage = input.trim();
     setInput('');
@@ -178,7 +187,7 @@ const PaperAIChat: React.FC<PaperAIChatProps> = ({ paper }) => {
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask me anything about this paper..."
+            placeholder={isExtracting ? "Loading paper content..." : "Ask me anything about this paper..."}
             className="min-h-[60px] resize-none"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -186,9 +195,9 @@ const PaperAIChat: React.FC<PaperAIChatProps> = ({ paper }) => {
                 handleSubmit(e);
               }
             }}
-            disabled={isLoading}
+            disabled={isLoading || isExtracting}
           />
-          <Button type="submit" disabled={isLoading || !input.trim()} size="icon" className="h-[60px] w-[60px]">
+          <Button type="submit" disabled={isLoading || !input.trim() || isExtracting} size="icon" className="h-[60px] w-[60px]">
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

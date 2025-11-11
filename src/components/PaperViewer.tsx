@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, MessageSquare } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PaperAIChat from './PaperAIChat';
+import * as pdfjsLib from 'pdfjs-dist';
+import { useToast } from '@/hooks/use-toast';
+
+// Set up PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 interface PaperViewerProps {
   isOpen: boolean;
@@ -21,6 +26,46 @@ interface PaperViewerProps {
 
 const PaperViewer: React.FC<PaperViewerProps> = ({ isOpen, onClose, paper }) => {
   const [activeTab, setActiveTab] = useState<string>("viewer");
+  const [paperText, setPaperText] = useState<string>('');
+  const [isExtracting, setIsExtracting] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (isOpen && paper && !paperText) {
+      extractPdfText();
+    }
+  }, [isOpen, paper]);
+
+  const extractPdfText = async () => {
+    if (!paper?.file_url) return;
+    
+    setIsExtracting(true);
+    try {
+      const loadingTask = pdfjsLib.getDocument(paper.file_url);
+      const pdf = await loadingTask.promise;
+      let fullText = '';
+
+      for (let i = 1; i <= Math.min(pdf.numPages, 50); i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        fullText += pageText + '\n\n';
+      }
+
+      setPaperText(fullText);
+    } catch (error) {
+      console.error('Error extracting PDF text:', error);
+      toast({
+        title: "Warning",
+        description: "Could not extract paper content. AI answers may be limited.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsExtracting(false);
+    }
+  };
 
   if (!paper) return null;
 
@@ -60,17 +105,20 @@ const PaperViewer: React.FC<PaperViewerProps> = ({ isOpen, onClose, paper }) => 
           </div>
 
           <TabsContent value="viewer" className="flex-1 m-0 p-0">
-            <div className="w-full h-full">
+            <div className="w-full h-full relative select-none" onContextMenu={(e) => e.preventDefault()}>
               <iframe
                 src={paper.file_url}
-                className="w-full h-full border-0"
+                className="w-full h-full border-0 pointer-events-auto"
                 title={paper.title}
+                sandbox="allow-same-origin allow-scripts"
+                style={{ userSelect: 'none' }}
               />
+              <div className="absolute inset-0 pointer-events-none" />
             </div>
           </TabsContent>
 
           <TabsContent value="ai-help" className="flex-1 m-0 p-0 overflow-hidden">
-            <PaperAIChat paper={paper} />
+            <PaperAIChat paper={paper} paperText={paperText} isExtracting={isExtracting} />
           </TabsContent>
         </Tabs>
       </DialogContent>
