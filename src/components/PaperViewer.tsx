@@ -21,9 +21,10 @@ interface PaperViewerProps {
 }
 
 const PaperViewer: React.FC<PaperViewerProps> = ({ isOpen, onClose, paper }) => {
-  const [activeTab, setActiveTab] = useState<string>("viewer");
+  const [activeTab, setActiveTab] = useState<string>('viewer');
   const [paperText, setPaperText] = useState<string>('');
   const [isExtracting, setIsExtracting] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState<string>('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -32,9 +33,23 @@ const PaperViewer: React.FC<PaperViewerProps> = ({ isOpen, onClose, paper }) => 
     }
   }, [isOpen, paper]);
 
+  // Auto-decide best way to display the PDF
+  useEffect(() => {
+    if (paper?.file_url) {
+      // Prefer HTTPS to avoid mixed content errors
+      let url = paper.file_url;
+      if (!url.startsWith('https://') && url.startsWith('http://')) {
+        url = url.replace('http://', 'https://');
+      }
+
+      // Some browsers block direct embed; Google viewer is safest fallback
+      const safeViewer = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+      setViewerUrl(safeViewer);
+    }
+  }, [paper]);
+
   const extractPdfText = async () => {
     if (!paper?.file_url) return;
-    
     setIsExtracting(true);
     try {
       const response = await fetch('https://zjecjayanqsjomtnsxmh.supabase.co/functions/v1/extract-paper-text', {
@@ -47,7 +62,7 @@ const PaperViewer: React.FC<PaperViewerProps> = ({ isOpen, onClose, paper }) => 
       });
 
       const result = await response.json();
-      
+
       if (result.success && result.text) {
         setPaperText(result.text);
         console.log('Extracted text length:', result.text.length);
@@ -57,9 +72,9 @@ const PaperViewer: React.FC<PaperViewerProps> = ({ isOpen, onClose, paper }) => 
     } catch (error) {
       console.error('Error extracting PDF text:', error);
       toast({
-        title: "Warning",
-        description: "Could not extract paper content. AI answers may be limited.",
-        variant: "destructive"
+        title: 'Warning',
+        description: 'Could not extract paper content. AI answers may be limited.',
+        variant: 'destructive',
       });
     } finally {
       setIsExtracting(false);
@@ -81,12 +96,7 @@ const PaperViewer: React.FC<PaperViewerProps> = ({ isOpen, onClose, paper }) => 
                 {paper.course.code} - {paper.course.name}
               </p>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="shrink-0"
-            >
+            <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -103,19 +113,19 @@ const PaperViewer: React.FC<PaperViewerProps> = ({ isOpen, onClose, paper }) => 
             </TabsList>
           </div>
 
+          {/* VIEWER TAB */}
           <TabsContent value="viewer" className="flex-1 m-0 p-0">
             <div className="w-full h-full relative select-none" onContextMenu={(e) => e.preventDefault()}>
               <iframe
-                src={paper.file_url}
+                src={viewerUrl}
                 className="w-full h-full border-0 pointer-events-auto"
                 title={paper.title}
-                sandbox="allow-same-origin allow-scripts"
-                style={{ userSelect: 'none' }}
+                allow="fullscreen"
               />
-              <div className="absolute inset-0 pointer-events-none" />
             </div>
           </TabsContent>
 
+          {/* AI HELP TAB */}
           <TabsContent value="ai-help" className="flex-1 m-0 p-0 overflow-hidden">
             <PaperAIChat paper={paper} paperText={paperText} isExtracting={isExtracting} />
           </TabsContent>
