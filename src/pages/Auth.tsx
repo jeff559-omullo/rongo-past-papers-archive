@@ -118,7 +118,7 @@ const Auth = () => {
 
     const redirectUrl = `${window.location.origin}/`;
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: signupEmail,
       password: signupPassword,
       options: {
@@ -135,13 +135,14 @@ const Auth = () => {
       });
     } else {
       toast({
-        title: "Account created!",
-        description: "Please check your email to verify your account.",
+        title: "Account created successfully!",
+        description: "Logging you in...",
       });
-      // Reset form
-      setSignupEmail('');
-      setSignupPassword('');
-      setConfirmPassword('');
+      
+      // Since email verification is disabled, auto-login
+      setTimeout(() => {
+        navigate('/');
+      }, 1000);
     }
     
     setIsLoading(false);
