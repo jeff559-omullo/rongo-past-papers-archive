@@ -199,18 +199,9 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
-      make_admin: {
-        Args: { _email: string }
-        Returns: boolean
-      }
-      user_has_access: {
-        Args: { user_uuid: string }
-        Returns: boolean
-      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      make_admin: { Args: { _email: string }; Returns: boolean }
+      user_has_access: { Args: { user_uuid: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"
