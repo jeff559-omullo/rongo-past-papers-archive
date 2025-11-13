@@ -40,8 +40,16 @@ I can help you with:
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadedText, setUploadedText] = useState<string>(paperText);
   const [isPaperLoaded, setIsPaperLoaded] = useState(false);
+  const [showManualInput, setShowManualInput] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // If we already have paper text (e.g., passed from viewer), mark as loaded
+    if (uploadedText && uploadedText.trim().length > 0) {
+      setIsPaperLoaded(true);
+    }
+  }, [uploadedText]);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -70,13 +78,35 @@ I can help you with:
 
       const result = await res.json();
       if (result.success && result.text) {
-        setUploadedText(result.text);
+        const text: string = String(result.text);
+        setUploadedText(text);
         setIsPaperLoaded(true);
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: `✅ Paper loaded successfully! I now have the content and can answer your questions about it.`
-        }]);
-        toast({ title: 'Paper loaded!', description: 'You can now ask questions about the content.' });
+        const len = text.trim().length;
+        const looksScanned = len < 800; // Heuristic: likely image-based with minimal text
+
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: looksScanned
+              ? `⚠️ I loaded the PDF, but it looks like a scanned image with very little selectable text.
+AI answers may be limited or generic.
+
+Tips:
+• Try a text-based PDF version if possible
+• Or paste the paper text manually using the "Paste text" option below`
+              : `✅ Paper loaded successfully! I now have the content and can answer your questions about it.`,
+          },
+        ]);
+
+        toast({
+          title: looksScanned ? 'Loaded with limited text' : 'Paper loaded!',
+          description: looksScanned
+            ? 'This PDF seems scanned; consider pasting text manually for best results.'
+            : 'You can now ask questions about the content.',
+        });
+
+        if (looksScanned) setShowManualInput(true);
       } else {
         throw new Error(result.error || 'Failed to extract text');
       }
@@ -117,7 +147,16 @@ I can help you with:
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to get AI response.');
+      if (!response.ok) {
+        if (response.status === 429) {
+          toast({ title: 'Rate limited', description: 'Too many requests. Please wait a moment and try again.' });
+        } else if (response.status === 402) {
+          toast({ title: 'AI credits required', description: 'Workspace credits are exhausted. Please try again later.' });
+        } else {
+          toast({ title: 'AI error', description: 'Failed to get AI response. Please retry.' });
+        }
+        throw new Error(`AI error: ${response.status}`);
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -168,6 +207,14 @@ I can help you with:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
+    if (!isPaperLoaded) {
+      toast({
+        title: 'Paper not loaded',
+        description: 'Upload a PDF or paste the paper text before asking questions.',
+      });
+      setShowManualInput(true);
+      return;
+    }
     const userMessage = input.trim();
     setInput('');
     await streamChat(userMessage);
@@ -217,24 +264,60 @@ I can help you with:
       </ScrollArea>
 
       <div className="p-4 border-t bg-card/50 backdrop-blur-sm">
-        <div className="flex items-start gap-2">
-          <label 
-            className={`flex items-center gap-2 cursor-pointer px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-              isPaperLoaded 
-                ? 'bg-green-500/10 text-green-600 border border-green-500/20' 
-                : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
-            }`}
-          >
-            <Upload className="h-4 w-4" />
-            <span className="hidden sm:inline">{isPaperLoaded ? '✓ Loaded' : 'Upload PDF'}</span>
-            <input type="file" accept="application/pdf" hidden onChange={handleFileUpload} disabled={isLoading} />
-          </label>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-start gap-2">
+            <label 
+              className={`flex items-center gap-2 cursor-pointer px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                isPaperLoaded 
+                  ? 'bg-green-500/10 text-green-600 border border-green-500/20' 
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
+              }`}
+            >
+              <Upload className="h-4 w-4" />
+              <span className="hidden sm:inline">{isPaperLoaded ? '✓ Loaded' : 'Upload PDF'}</span>
+              <input type="file" accept="application/pdf" hidden onChange={handleFileUpload} disabled={isLoading} />
+            </label>
+            <Button variant="secondary" size="sm" onClick={() => setShowManualInput((v) => !v)}>
+              {showManualInput ? 'Hide Paste Text' : 'Paste Text'}
+            </Button>
+          </div>
 
-          <form onSubmit={handleSubmit} className="flex-1 flex gap-2">
+          {showManualInput && (
+            <div className="rounded-xl border p-3 bg-background">
+              <Textarea
+                placeholder="Paste the paper text here (headings, questions, content)..."
+                className="min-h-[120px]"
+                value={uploadedText}
+                onChange={(e) => setUploadedText(e.target.value)}
+              />
+              <div className="flex justify-end mt-2">
+                <Button
+                  onClick={() => {
+                    if (uploadedText.trim().length < 50) {
+                      toast({ title: 'Too little text', description: 'Please paste more content for accurate answers.' });
+                      return;
+                    }
+                    setIsPaperLoaded(true);
+                    toast({ title: 'Paper text loaded', description: 'You can now ask questions.' });
+                    setMessages((prev) => [
+                      ...prev,
+                      { role: 'assistant', content: '✅ I have your pasted text. Ask me anything about it!' },
+                    ]);
+                  }}
+                  variant="default"
+                  size="sm"
+                >
+                  Use This Text
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="flex gap-2">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isPaperLoaded ? "Ask your question..." : "Upload a PDF first to start chatting..."}
+              placeholder={isPaperLoaded ? "Ask your question..." : "Upload or paste the paper text to start chatting..."}
               className="min-h-[56px] max-h-32 resize-none flex-1 bg-background"
               disabled={isLoading}
               onKeyDown={(e) => {
