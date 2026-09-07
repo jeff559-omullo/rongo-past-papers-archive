@@ -240,7 +240,7 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({
               <div>
                 <h3 className="text-xl font-bold text-orange-800 mb-2">Premium Access Required</h3>
                 <p className="text-orange-700 mb-4">
-                  Our extensive collection of past papers is available for a one-time payment of <strong>KSH 10</strong>.
+                  Our extensive collection of past papers is available for a one-time payment of <strong>KSH 50</strong>.
                   Get access to all papers across all years and courses.
                 </p>
                 <div className="space-y-2 text-sm text-orange-600">
@@ -256,7 +256,7 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({
                 size="lg"
               >
                 <CreditCard className="h-5 w-5 mr-2" />
-                Pay KSH 10 - Get Full Access
+                Pay KSH 50 - Get Full Access
               </Button>
             </div>
           </CardContent>
@@ -357,7 +357,7 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({
                               Locked - Pay to Access
                             </Button>
                             <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded text-center">
-                              Premium Content - KSH 10 for Full Access
+                              Premium Content - KSH 50 for Full Access
                             </div>
                           </>
                         )}
