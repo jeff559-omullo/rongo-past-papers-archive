@@ -171,7 +171,7 @@ const Index = () => {
                   <p className="text-blue-100 text-sm md:text-lg">
                     {hasAccess 
                       ? "You have premium access! Download and view all papers across all years and courses."
-                      : "Access our comprehensive collection of past examination papers. Premium access available for KSH 10."
+                      : "Access our comprehensive collection of past examination papers. Premium access available for KSH 50."
                     }
                   </p>
                 </div>

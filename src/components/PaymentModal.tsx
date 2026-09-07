@@ -38,7 +38,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onPaymentS
         .insert({
           user_id: user.id,
           phone_number: phoneNumber,
-          amount: 10.00,
+          amount: 50.00,
           currency: 'KES',
           payment_method: 'mpesa',
           status: 'pending'
@@ -56,7 +56,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onPaymentS
       const { data: mpesaResponse, error: mpesaError } = await supabase.functions.invoke('mpesa-payment', {
         body: {
           phoneNumber: phoneNumber,
-          amount: 10,
+          amount: 50,
           paymentId: payment.id
         }
       });
@@ -199,10 +199,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onPaymentS
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <CreditCard className="h-5 w-5" />
-            Complete Payment - KSH 10
+            Complete Payment - KSH 50
           </DialogTitle>
           <DialogDescription className="text-sm">
-            Pay KSH 10 to get unlimited access to all past papers for 4 months.
+            Pay KSH 50 to get unlimited access to all past papers for 4 months.
           </DialogDescription>
         </DialogHeader>
 
@@ -258,7 +258,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onPaymentS
                 disabled={isProcessing || !phoneNumber}
               >
                 <CreditCard className="mr-2 h-4 w-4" />
-                Pay KSH 10
+                Pay KSH 50
               </Button>
             </div>
           </form>

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -14,129 +13,71 @@ interface PaymentRequest {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    )
-
     if (req.method !== 'POST') {
       return new Response(
-        JSON.stringify({ error: 'Method not allowed' }),
+        JSON.stringify({ error: 'Method not allowed', success: false }),
         { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     const { phoneNumber, amount, paymentId }: PaymentRequest = await req.json()
 
-    console.log('Processing M-Pesa payment request:', { phoneNumber, amount, paymentId })
-
-    // Get M-Pesa credentials from secrets
-    const consumerKey = Deno.env.get('MPESA_CONSUMER_KEY')
-    const consumerSecret = Deno.env.get('MPESA_CONSUMER_SECRET')
-
-    console.log('Checking M-Pesa credentials availability:', {
-      hasConsumerKey: !!consumerKey,
-      hasConsumerSecret: !!consumerSecret,
-      consumerKeyLength: consumerKey?.length || 0,
-      consumerSecretLength: consumerSecret?.length || 0
-    })
-
-    console.log('All environment variables:', Object.keys(Deno.env.toObject()))
-
-    if (!consumerKey || !consumerSecret) {
-      console.error('M-Pesa credentials not found in environment')
-      console.error('Available env vars:', Object.keys(Deno.env.toObject()).filter(key => key.includes('MPESA')))
-      console.error('Consumer Key exists:', !!consumerKey, 'Value:', consumerKey ? 'SET' : 'NOT_SET')
-      console.error('Consumer Secret exists:', !!consumerSecret, 'Value:', consumerSecret ? 'SET' : 'NOT_SET')
-      throw new Error('M-Pesa credentials not configured')
+    if (!phoneNumber || !paymentId) {
+      return new Response(
+        JSON.stringify({ error: 'phoneNumber and paymentId are required', success: false }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
-    console.log('M-Pesa credentials loaded successfully')
+    const apiKey = Deno.env.get('MEGAPAY_API_KEY')
+    const email = Deno.env.get('MEGAPAY_EMAIL')
+    const baseUrl = (Deno.env.get('MEGAPAY_BASE_URL') ?? 'https://megapay.co.ke/backend/v1').replace(/\/+$/, '')
 
-    // Step 1: Get OAuth access token
-    const authString = btoa(`${consumerKey}:${consumerSecret}`)
-    
-    console.log('Getting M-Pesa OAuth token...')
-    const authResponse = await fetch('https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Basic ${authString}`,
-      },
-    })
-
-    if (!authResponse.ok) {
-      console.error('Failed to get OAuth token:', authResponse.status, authResponse.statusText)
-      throw new Error('Failed to authenticate with M-Pesa')
+    if (!apiKey || !email) {
+      console.error('MegaPay credentials not configured')
+      throw new Error('Payment gateway not configured')
     }
 
-    const authData = await authResponse.json()
-    console.log('OAuth token received successfully')
+    // Normalise phone to 2547XXXXXXXX / 2541XXXXXXXX
+    let msisdn = phoneNumber.trim().replace(/\s+/g, '')
+    if (msisdn.startsWith('+')) msisdn = msisdn.substring(1)
+    if (msisdn.startsWith('0')) msisdn = `254${msisdn.substring(1)}`
+    if (!msisdn.startsWith('254')) msisdn = `254${msisdn}`
 
-    // Ensure phone number is in correct format (254XXXXXXXXX)
-    let formattedPhone = phoneNumber.trim()
-    if (formattedPhone.startsWith('0')) {
-      formattedPhone = `254${formattedPhone.substring(1)}`
-    } else if (formattedPhone.startsWith('+254')) {
-      formattedPhone = formattedPhone.substring(1)
-    } else if (!formattedPhone.startsWith('254')) {
-      formattedPhone = `254${formattedPhone}`
-    }
+    // Unique numeric reference we can match in the callback
+    const reference = `${Date.now()}`.slice(-9)
+    const payAmount = String(amount ?? 50)
 
-    console.log('Formatted phone number:', formattedPhone)
+    console.log('Sending MegaPay STK push', { msisdn, payAmount, reference, paymentId })
 
-    // Step 2: Initiate STK Push
-    const timestamp = new Date().toISOString().replace(/[T\-:\.Z]/g, '').substring(0, 14)
-    const shortcode = '174379'  // Safaricom sandbox shortcode
-    const passkey = 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919'  // Sandbox passkey
-    const password = btoa(`${shortcode}${passkey}${timestamp}`)
-
-    const stkPayload = {
-      BusinessShortCode: shortcode,
-      Password: password,
-      Timestamp: timestamp,
-      TransactionType: 'CustomerPayBillOnline',
-      Amount: amount,
-      PartyA: formattedPhone,
-      PartyB: shortcode,
-      PhoneNumber: formattedPhone,
-      CallBackURL: `https://zjecjayanqsjomtnsxmh.supabase.co/functions/v1/mpesa-callback`,
-      AccountReference: `RONGO_${paymentId}`,
-      TransactionDesc: 'Rongo University Past Papers Access'
-    }
-
-    console.log('Sending STK Push request...', JSON.stringify(stkPayload, null, 2))
-
-    const stkResponse = await fetch('https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', {
+    const stkResponse = await fetch(`${baseUrl}/stk`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${authData.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(stkPayload),
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        api_key: apiKey,
+        email,
+        amount: payAmount,
+        msisdn,
+        reference,
+      }),
     })
 
-    if (!stkResponse.ok) {
-      console.error('STK Push failed:', stkResponse.status, stkResponse.statusText)
-      const errorText = await stkResponse.text()
-      console.error('STK Push error response:', errorText)
-      throw new Error('Failed to initiate M-Pesa payment')
+    const raw = await stkResponse.text()
+    console.log('MegaPay raw response:', stkResponse.status, raw)
+
+    let data: any = {}
+    try { data = JSON.parse(raw) } catch (_) { /* keep raw */ }
+
+    const ok = stkResponse.ok && (String(data.success) === '200' || data.success === true)
+    if (!ok) {
+      throw new Error(data.massage || data.message || data.error || `MegaPay request failed (${stkResponse.status})`)
     }
 
-    const stkData = await stkResponse.json()
-    console.log('STK Push response:', JSON.stringify(stkData, null, 2))
-
-    if (stkData.ResponseCode !== '0') {
-      console.error('STK Push request failed:', stkData.ResponseDescription)
-      throw new Error(stkData.ResponseDescription || 'Payment request failed')
-    }
-
-    // Store M-Pesa transaction details using service role key for admin access
     const supabaseService = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -146,43 +87,33 @@ serve(async (req) => {
       .from('mpesa_transactions')
       .insert({
         payment_id: paymentId,
-        merchant_request_id: stkData.MerchantRequestID,
-        checkout_request_id: stkData.CheckoutRequestID,
-        phone_number: formattedPhone,
-        amount: amount
+        merchant_request_id: data.transaction_request_id ?? null,
+        checkout_request_id: reference,
+        phone_number: msisdn,
+        amount: Number(payAmount),
       })
 
     if (mpesaError) {
-      console.error('Error storing M-Pesa transaction:', mpesaError)
+      console.error('Error storing MegaPay transaction:', mpesaError)
       throw new Error('Failed to store transaction details')
     }
-
-    console.log('M-Pesa transaction stored successfully')
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Payment request sent to your phone. Please check your phone and enter your M-Pesa PIN to complete the payment.',
-        merchantRequestId: stkData.MerchantRequestID,
-        checkoutRequestId: stkData.CheckoutRequestID
+        message: data.massage || 'Payment request sent to your phone. Enter your M-Pesa PIN to complete.',
+        transactionRequestId: data.transaction_request_id ?? null,
+        checkoutRequestId: reference,
+        reference,
       }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
-    console.error('M-Pesa payment error:', error)
+    console.error('MegaPay payment error:', error)
     return new Response(
-      JSON.stringify({ 
-        error: error.message || 'Payment processing failed',
-        success: false 
-      }),
-      { 
-        status: 400, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ error: (error as Error).message || 'Payment processing failed', success: false }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })
