@@ -7,10 +7,13 @@ const corsHeaders = {
 }
 
 interface PaymentRequest {
-  phoneNumber: string;
-  amount: number;
+  phoneNumber?: string;
+  amount?: number;
   paymentId: string;
+  action?: 'status';
 }
+
+const CALLBACK_URL = 'https://zjecjayanqsjomtnsxmh.supabase.co/functions/v1/mpesa-callback'
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -25,18 +28,109 @@ serve(async (req) => {
       )
     }
 
-    const { phoneNumber, amount, paymentId }: PaymentRequest = await req.json()
+    const apiKey = Deno.env.get('MEGAPAY_API_KEY')
+    const email = Deno.env.get('MEGAPAY_EMAIL')
+    const baseUrl = (Deno.env.get('MEGAPAY_BASE_URL') ?? 'https://megapay.co.ke/backend/v1').replace(/\/+$/, '')
 
-    if (!phoneNumber || !paymentId) {
+    const supabaseService = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    const body: PaymentRequest = await req.json()
+    const { phoneNumber, amount, paymentId, action } = body
+
+    if (!paymentId) {
       return new Response(
-        JSON.stringify({ error: 'phoneNumber and paymentId are required', success: false }),
+        JSON.stringify({ error: 'paymentId is required', success: false }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const apiKey = Deno.env.get('MEGAPAY_API_KEY')
-    const email = Deno.env.get('MEGAPAY_EMAIL')
-    const baseUrl = (Deno.env.get('MEGAPAY_BASE_URL') ?? 'https://megapay.co.ke/backend/v1').replace(/\/+$/, '')
+    // ---- Manual status check: used by "I've paid" button as a callback fallback ----
+    if (action === 'status') {
+      const { data: payment } = await supabaseService
+        .from('user_payments')
+        .select('status')
+        .eq('id', paymentId)
+        .maybeSingle()
+
+      if (payment?.status === 'completed') {
+        return new Response(
+          JSON.stringify({ success: true, status: 'completed' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Ask MegaPay directly (best-effort; ignored if endpoint unsupported)
+      if (apiKey && email) {
+        const { data: tx } = await supabaseService
+          .from('mpesa_transactions')
+          .select('*')
+          .eq('payment_id', paymentId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (tx) {
+          for (const path of ['/stk/query', '/stk-query', '/query', '/transaction/status']) {
+            try {
+              const res = await fetch(`${baseUrl}${path}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({
+                  api_key: apiKey,
+                  email,
+                  reference: tx.checkout_request_id,
+                  transaction_request_id: tx.merchant_request_id,
+                }),
+              })
+              const raw = await res.text()
+              console.log(`MegaPay status query ${path}:`, res.status, raw)
+              if (!res.ok) continue
+
+              let data: any = {}
+              try { data = JSON.parse(raw) } catch (_) { continue }
+
+              const code = Number(data.ResponseCode ?? data.ResultCode ?? data.resultCode ?? data.success ?? 1)
+              if (code === 0 || data.ResponseCode === 0) {
+                const receipt = data.TransactionReceipt ?? data.MpesaReceiptNumber ?? null
+                await supabaseService.from('mpesa_transactions').update({
+                  result_code: 0,
+                  result_desc: data.ResponseDescription ?? 'Confirmed via status query',
+                  mpesa_receipt_number: receipt,
+                  updated_at: new Date().toISOString(),
+                }).eq('id', tx.id)
+                await supabaseService.from('user_payments').update({
+                  status: 'completed',
+                  transaction_id: receipt,
+                }).eq('id', paymentId)
+
+                return new Response(
+                  JSON.stringify({ success: true, status: 'completed' }),
+                  { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                )
+              }
+            } catch (e) {
+              console.error(`Status query ${path} failed:`, e)
+            }
+          }
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, status: payment?.status ?? 'pending' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ---- Initiate STK push ----
+    if (!phoneNumber) {
+      return new Response(
+        JSON.stringify({ error: 'phoneNumber is required', success: false }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     if (!apiKey || !email) {
       console.error('MegaPay credentials not configured')
@@ -64,6 +158,11 @@ serve(async (req) => {
         amount: payAmount,
         msisdn,
         reference,
+        // Send our callback URL in every common field name; gateways
+        // that support a dynamic callback will use it, others ignore it.
+        callback_url: CALLBACK_URL,
+        callback: CALLBACK_URL,
+        call_back: CALLBACK_URL,
       }),
     })
 
@@ -77,11 +176,6 @@ serve(async (req) => {
     if (!ok) {
       throw new Error(data.massage || data.message || data.error || `MegaPay request failed (${stkResponse.status})`)
     }
-
-    const supabaseService = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
 
     const { error: mpesaError } = await supabaseService
       .from('mpesa_transactions')
