@@ -73,16 +73,14 @@ serve(async (req) => {
           .maybeSingle()
 
         if (tx) {
-          for (const path of ['/stk/query', '/stk-query', '/query', '/transaction/status']) {
+          for (const path of ['/transactionstatus']) {
             try {
               const res = await fetch(`${baseUrl}${path}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 body: JSON.stringify({
                   api_key: apiKey,
-                  email,
-                  reference: tx.checkout_request_id,
-                  transaction_request_id: tx.merchant_request_id,
+                  transaction_id: tx.merchant_request_id,
                 }),
               })
               const raw = await res.text()
