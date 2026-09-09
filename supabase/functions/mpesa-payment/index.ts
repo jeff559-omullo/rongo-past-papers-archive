@@ -147,7 +147,7 @@ serve(async (req) => {
 
     console.log('Sending MegaPay STK push', { msisdn, payAmount, reference, paymentId })
 
-    const stkResponse = await fetch(`${baseUrl}/stk`, {
+    const stkResponse = await fetch(`${baseUrl}/initiatestk`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
