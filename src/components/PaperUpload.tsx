@@ -219,7 +219,7 @@ const PaperUpload: React.FC<PaperUploadProps> = ({ onUpload }) => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="year">Year of Study</Label>
               <Select 
@@ -257,7 +257,7 @@ const PaperUpload: React.FC<PaperUploadProps> = ({ onUpload }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="academicYear">Academic Year</Label>
               <Input
