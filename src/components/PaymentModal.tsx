@@ -51,6 +51,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onPaymentS
       }
 
       console.log('Payment record created:', payment.id);
+      setPaymentRecordId(payment.id);
+
 
       // Call M-Pesa payment function
       const { data: mpesaResponse, error: mpesaError } = await supabase.functions.invoke('mpesa-payment', {
@@ -159,12 +161,57 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onPaymentS
     }
   };
 
+  const [paymentRecordId, setPaymentRecordId] = useState<string>('');
+  const [isChecking, setIsChecking] = useState(false);
+
+  const handleManualCheck = async () => {
+    if (!paymentRecordId) return;
+    setIsChecking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('mpesa-payment', {
+        body: { paymentId: paymentRecordId, action: 'status' }
+      });
+      if (error) throw error;
+
+      if (data?.status === 'completed') {
+        setPaymentStatus('success');
+        setIsProcessing(false);
+        await checkAccess();
+        toast({
+          title: "Payment Confirmed!",
+          description: "You now have access to all past papers.",
+        });
+        setTimeout(() => {
+          onPaymentSuccess();
+          onClose();
+          resetModal();
+        }, 2000);
+      } else {
+        toast({
+          title: "Not confirmed yet",
+          description: "We haven't received your payment yet. If you just paid, wait a few seconds and try again.",
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Could not check payment",
+        description: (err as Error).message || "Please try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
   const resetModal = () => {
     setPaymentStatus('idle');
     setPhoneNumber('');
     setCheckoutRequestId('');
+    setPaymentRecordId('');
     setIsProcessing(false);
+    setIsChecking(false);
   };
+
 
   const formatPhoneNumber = (value: string) => {
     // Remove all non-numeric characters
@@ -283,7 +330,20 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onPaymentS
               <Loader2 className="h-4 w-4 animate-spin" />
               Waiting for payment confirmation...
             </div>
+            <Button
+              variant="outline"
+              className="w-full mt-4"
+              onClick={handleManualCheck}
+              disabled={isChecking}
+            >
+              {isChecking ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Checking...</>
+              ) : (
+                <><CheckCircle className="mr-2 h-4 w-4" />I've paid — check status</>
+              )}
+            </Button>
           </div>
+
         )}
 
         {paymentStatus === 'success' && (
