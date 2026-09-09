@@ -170,9 +170,13 @@ serve(async (req) => {
     let data: any = {}
     try { data = JSON.parse(raw) } catch (_) { /* keep raw */ }
 
-    const ok = stkResponse.ok && (String(data.success) === '200' || data.success === true)
+    const ok = stkResponse.ok && (String(data.success) === '200' || data.success === true ||
+      String(data.ResponseCode ?? '') === '0')
     if (!ok) {
-      throw new Error(data.massage || data.message || data.error || `MegaPay request failed (${stkResponse.status})`)
+      throw new Error(
+        data.errorMessage || data.massage || data.message || data.error ||
+        `MegaPay request failed (${stkResponse.status})`
+      )
     }
 
     const { error: mpesaError } = await supabaseService
