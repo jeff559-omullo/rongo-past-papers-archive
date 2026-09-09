@@ -277,23 +277,13 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({
 
       {/* Papers by Year Tabs */}
       <Tabs defaultValue="1" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="1" className="flex items-center gap-2">
-            <GraduationCap className="h-4 w-4" />
-            1st Year ({papersByYear[1].length})
-          </TabsTrigger>
-          <TabsTrigger value="2" className="flex items-center gap-2">
-            <GraduationCap className="h-4 w-4" />
-            2nd Year ({papersByYear[2].length})
-          </TabsTrigger>
-          <TabsTrigger value="3" className="flex items-center gap-2">
-            <GraduationCap className="h-4 w-4" />
-            3rd Year ({papersByYear[3].length})
-          </TabsTrigger>
-          <TabsTrigger value="4" className="flex items-center gap-2">
-            <GraduationCap className="h-4 w-4" />
-            4th Year ({papersByYear[4].length})
-          </TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 h-auto">
+          {[1, 2, 3, 4].map((y, i) => (
+            <TabsTrigger key={y} value={y.toString()} className="flex items-center gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3 py-2">
+              <GraduationCap className="h-4 w-4 hidden md:inline" />
+              {['1st','2nd','3rd','4th'][i]}<span className="hidden sm:inline">&nbsp;Year</span>&nbsp;({papersByYear[y as keyof typeof papersByYear].length})
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         {[1, 2, 3, 4].map(year => (
@@ -305,12 +295,12 @@ const PapersDisplay: React.FC<PapersDisplayProps> = ({
                   className={`hover:shadow-lg transition-shadow ${!hasAccess ? 'opacity-75' : ''}`}
                 >
                   <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      {!hasAccess && <Lock className="h-4 w-4 text-gray-500" />}
+                    <CardTitle className="text-base md:text-lg flex items-start gap-2 break-words">
+                      {!hasAccess && <Lock className="h-4 w-4 text-gray-500 shrink-0 mt-1" />}
                       {paper.title}
                     </CardTitle>
-                    <CardDescription className="flex items-center gap-2">
-                      <BookOpen className="h-4 w-4" />
+                    <CardDescription className="flex items-start gap-2 break-words">
+                      <BookOpen className="h-4 w-4 shrink-0 mt-0.5" />
                       {paper.course_code} - {paper.course_name}
                     </CardDescription>
                   </CardHeader>
